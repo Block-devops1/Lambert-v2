@@ -74,10 +74,16 @@ test("disruptors and focus score", () => {
   assert.equal(s.summary.focusScore, 75);
 });
 
+test("older saves with habit_type 'build' count as build time", () => {
+  const s = run([row("2026-10-28", "coding", 50, "build")]);
+  assert.equal(s.summary.todayBuild, 50);
+  assert.equal(s.habits.find((x) => x.subject === "coding").minutes7d, 50);
+});
+
 test("misses (0 minutes) and unknown types are ignored; no data means null score", () => {
   const s = run([
     row("2026-10-28", "coding", 0),
-    row("2026-10-28", "coding", 50, "build"),
+    row("2026-10-28", "coding", 50, "weird"),
   ]);
   assert.equal(s.summary.todayBuild, 0);
   assert.equal(s.summary.focusScore, null);

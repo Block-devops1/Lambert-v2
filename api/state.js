@@ -45,6 +45,11 @@ module.exports = async function handler(req, res) {
     if (logsR.error)
       return res.status(500).json({ error: "Couldn't load your logs" });
 
+    // Older saves wrote habit_type "build"; the engine calls build time "continue".
+    const logs = (logsR.data || []).map((r) =>
+      r.habit_type === "build" ? { ...r, habit_type: "continue" } : r,
+    );
+
     // Settings are optional: a missing row or table just means defaults.
     const warnings = [];
     if (settingsR.error) warnings.push("settings_unavailable");

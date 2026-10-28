@@ -3,7 +3,8 @@
 // depend on how buildState works inside. Pure functions: no database, no AI.
 const { normText, BUILD_TYPE } = require("./engine.js");
 
-const BUILD = BUILD_TYPE || "continue";
+// "build" is what older saves wrote for build time; the engine calls it "continue".
+const BUILD_TYPES = new Set([BUILD_TYPE || "continue", "build"]);
 const DAY = 86400000;
 
 function dayOf(ms, tz) {
@@ -39,7 +40,7 @@ function enrichState({
     const dir =
       l.habit_type === "stop"
         ? "stop"
-        : l.habit_type === BUILD
+        : BUILD_TYPES.has(l.habit_type)
           ? "build"
           : null;
     if (i === undefined || !dir || min <= 0) continue;
