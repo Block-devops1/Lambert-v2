@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Coach — Lambert</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.5;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+      }
+      .top {
+        max-width: 760px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 18px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.8rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .page {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .banner {
+        display: none;
+        margin-bottom: 10px;
+        font-size: 0.78rem;
+        padding: 9px 12px;
+        border-radius: 10px;
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        color: var(--amber);
+      }
+      #feed {
+        flex: 1;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      .feed-in {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 6px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .msg {
+        display: flex;
+        flex-direction: column;
+        max-width: 88%;
+      }
+      .msg.me {
+        align-self: flex-end;
+        align-items: flex-end;
+      }
+      .msg.ai {
+        align-self: flex-start;
+        align-items: flex-start;
+      }
+      .bub {
+        padding: 12px 15px;
+        border-radius: 16px;
+        font-size: 0.93rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .me .bub {
+        background: var(--amber);
+        color: #1a1000;
+        border-bottom-right-radius: 5px;
+        font-weight: 500;
+      }
+      .ai .bub {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-bottom-left-radius: 5px;
+      }
+      .err .bub {
+        border-color: rgba(239, 68, 68, 0.45);
+        color: #fca5a5;
+      }
+      .foot {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+      .chip {
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 99px;
+        background: rgba(16, 185, 129, 0.14);
+        color: var(--green);
+      }
+      .model {
+        font-size: 0.66rem;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        padding: 3px 0;
+      }
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 40px 10px 10px;
+      }
+      .empty h2 {
+        color: var(--text);
+        font-size: 1.1rem;
+        margin-bottom: 6px;
+      }
+      .sugg {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .sugg button {
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--text);
+        font:
+          600 0.8rem Inter,
+          sans-serif;
+        padding: 10px 14px;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+      .sugg button:hover {
+        border-color: var(--amber);
+      }
+      .dots {
+        display: inline-flex;
+        gap: 5px;
+        padding: 4px 2px;
+      }
+      .dots i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--muted);
+        animation: blink 1.2s infinite ease-in-out;
+      }
+      .dots i:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .dots i:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      @keyframes blink {
+        0%,
+        80%,
+        100% {
+          opacity: 0.25;
+        }
+        40% {
+          opacity: 1;
+        }
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .msg {
+        animation: rise 0.18s ease-out;
+      }
+      .comp {
+        border-top: 1px solid var(--line);
+        background: var(--bg);
+        padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+      }
+      .comp-in {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0 18px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      textarea {
+        flex: 1;
+        resize: none;
+        max-height: 140px;
+        padding: 13px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #0a1122;
+        color: var(--text);
+        font:
+          500 0.95rem Inter,
+          sans-serif;
+        line-height: 1.4;
+      }
+      textarea:focus {
+        outline: 2px solid rgba(245, 158, 11, 0.5);
+      }
+      .send {
+        padding: 13px 18px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--amber);
+        color: #1a1000;
+        font:
+          700 0.9rem Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .send:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .gate {
+        margin: auto;
+        color: var(--muted);
+        text-align: center;
+        padding: 20px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .msg {
+          animation: none;
+        }
+        .dots i {
+          animation: none;
+          opacity: 0.7;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gate" id="gate">Loading…</div>
+
+    <div class="top" id="top" hidden>
+      <header>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <div class="page">Coach</div>
+      </header>
+      <div class="banner" id="banner" role="status"></div>
+    </div>
+    <div id="feed" hidden><div class="feed-in" id="msgs"></div></div>
+    <div class="comp" id="comp" hidden>
+      <div class="comp-in">
+        <textarea
+          id="in"
+          rows="1"
+          maxlength="2000"
+          placeholder="Talk to Lambert…"
+          enterkeyhint="send"
+        ></textarea>
+        <button class="send" id="send" type="button">Send</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="/api/config"></script>
+    <script src="/coach-lib.js"></script>
+    <script src="/nav.js"></script>
+    <script>
+      var C = window.LAMBERT || {},
+        L = window.CoachLib,
+        sb = null,
+        uid = null,
+        isAdmin = false,
+        busy = false;
+      var logs = [],
+        goals = [],
+        memories = [],
+        chatHistory = [],
+        weeklyChallenge = null;
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function mk(tag, cls, txt) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt != null) e.textContent = txt;
+        return e;
+      }
+
+      function gate(text) {
+        $("gate").textContent = text;
+        $("gate").hidden = false;
+        $("top").hidden = $("feed").hidden = $("comp").hidden = true;
+      }
+      function banner(text) {
+        var b = $("banner");
+        b.textContent = text;
+        b.style.display = text ? "block" : "none";
+      }
+      function toBottom() {
+        var f = $("feed");
+        f.scrollTop = f.scrollHeight;
+      }
+
+      function bubble(role, text, isErr) {
+        var empty = $("msgs").querySelector(".empty");
+        if (empty) empty.remove();
+        var wrap = mk(
+          "div",
+          "msg " + (role === "user" ? "me" : "ai") + (isErr ? " err" : ""),
+        );
+        wrap.appendChild(mk("div", "bub", text));
+        var foot = mk("div", "foot");
+        wrap.appendChild(foot);
+        $("msgs").appendChild(wrap);
+        toBottom();
+        return foot;
+      }
+      function chip(foot, text) {
+        foot.appendChild(mk("span", "chip", text));
+      }
+      function typing() {
+        var wrap = mk("div", "msg ai"),
+          b = mk("div", "bub"),
+          d = mk("span", "dots");
+        d.appendChild(mk("i"));
+        d.appendChild(mk("i"));
+        d.appendChild(mk("i"));
+        b.appendChild(d);
+        wrap.appendChild(b);
+        $("msgs").appendChild(wrap);
+        toBottom();
+        return wrap;
+      }
+
+      function showEmpty() {
+        var e = mk("div", "empty");
+        e.appendChild(mk("h2", "", "Talk to Lambert"));
+        e.appendChild(
+          mk(
+            "div",
+            "",
+            "Ask what to work on, tell him a goal, or say how today went.",
+          ),
+        );
+        var s = mk("div", "sugg");
+        ["How am I doing this week?", "What should I work on today?"].forEach(
+          function (q) {
+            var b = mk("button", "", q);
+            b.type = "button";
+            b.onclick = function () {
+              send(q);
+            };
+            s.appendChild(b);
+          },
+        );
+        e.appendChild(s);
+        $("msgs").appendChild(e);
+      }
+
+      function setBusy(v) {
+        busy = v;
+        $("send").disabled = v;
+        $("in").disabled = v;
+        if (!v) $("in").focus();
+      }
+      function resize() {
+        var t = $("in");
+        t.style.height = "auto";
+        t.style.height = Math.min(t.scrollHeight, 140) + "px";
+      }
+
+      async function load() {
+        var q = await Promise.all([
+          sb
+            .from("habit_logs")
+            .select(
+              "subject,duration,habit_type,description,reason_category,created_at",
+            )
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(1000),
+          sb
+            .from("lambert_goals")
+            .select("goal")
+            .eq("user_id", uid)
+            .eq("is_active", true)
+            .order("created_at", { ascending: false }),
+          sb
+            .from("lambert_memories")
+            .select("memory")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: true }),
+          sb
+            .from("lambert_conversations")
+            .select("role,content")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          sb
+            .from("lambert_challenges")
+            .select("challenge")
+            .eq("user_id", uid)
+            .eq("week_start", L.weekStartKey(new Date()))
+            .order("created_at", { ascending: false })
+            .limit(1),
+        ]);
+        if (q[0].error)
+          banner(
+            "Couldn’t load your logs, so Lambert is working without them: " +
+              q[0].error.message,
+          );
+        logs = q[0].data || [];
+        goals = q[1].data || [];
+        memories = q[2].data || [];
+        chatHistory = (q[3].data || []).slice().reverse();
+        weeklyChallenge =
+          q[4].data && q[4].data[0] ? q[4].data[0].challenge : null;
+      }
+
+      async function applyTags(foot, tags) {
+        for (var i = 0; i < tags.length; i++) {
+          var t = tags[i],
+            r;
+          try {
+            if (t.kind === "GOAL") {
+              r = await sb
+                .from("lambert_goals")
+                .insert([{ user_id: uid, goal: t.value }]);
+              if (r.error) throw r.error;
+              goals.unshift({ goal: t.value });
+              chip(foot, "Goal saved");
+            } else if (t.kind === "REMEMBER") {
+              r = await sb
+                .from("lambert_memories")
+                .insert([{ user_id: uid, memory: t.value }]);
+              if (r.error) throw r.error;
+              memories.push({ memory: t.value });
+              chip(foot, "Remembered");
+            } else if (t.kind === "CHALLENGE") {
+              var ws = L.weekStartKey(new Date());
+              var ex = await sb
+                .from("lambert_challenges")
+                .select("id")
+                .eq("user_id", uid)
+                .eq("week_start", ws)
+                .limit(1);
+              if (ex.data && ex.data[0])
+                r = await sb
+                  .from("lambert_challenges")
+                  .update({ challenge: t.value })
+                  .eq("id", ex.data[0].id);
+              else
+                r = await sb
+                  .from("lambert_challenges")
+                  .insert([
+                    { user_id: uid, challenge: t.value, week_start: ws },
+                  ]);
+              if (r.error) throw r.error;
+              weeklyChallenge = t.value;
+              chip(foot, "Weekly challenge set");
+            }
+          } catch (e) {
+            console.warn("Could not save " + t.kind, e);
+            chip(foot, "Couldn’t save " + t.kind.toLowerCase());
+          }
+        }
+      }
+
+      async function applyMisses(foot, actions) {
+        for (var i = 0; i < actions.length; i++) {
+          var a = actions[i];
+          if (a.type !== "miss") continue;
+          try {
+            var row = L.missRow(a, uid, new Date().toISOString());
+            var r = await sb.from("habit_logs").insert([row]);
+            if (r.error) throw r.error;
+            logs.unshift({
+              subject: row.subject,
+              duration: 0,
+              habit_type: row.habit_type,
+              description: row.description,
+              reason_category: row.reason_category,
+              created_at: row.created_at,
+            });
+            chip(
+              foot,
+              "Miss recorded: " + a.subject + " (" + L.label(a.category) + ")",
+            );
+          } catch (e) {
+            console.warn("Could not record miss", e);
+            chip(foot, "Couldn’t record the miss");
+          }
+        }
+      }
+
+      async function send(raw) {
+        var text = String(raw || "").trim();
+        if (busy || !text) return;
+        setBusy(true);
+        var sentAt = new Date().toISOString();
+        bubble("user", text);
+        $("in").value = "";
+        resize();
+        var wait = typing();
+        try {
+          var sess = (await sb.auth.getSession()).data.session;
+          if (!sess) {
+            location.replace("/login.html");
+            return;
+          }
+          var res = await fetch("/api/ai-chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + sess.access_token,
+            },
+            body: JSON.stringify({
+              message: text,
+              history: chatHistory.slice(-20),
+              habits: logs,
+              goals: goals,
+              memories: memories,
+              weeklyChallenge: weeklyChallenge,
+            }),
+          });
+          var data = await res.json().catch(function () {
+            return {};
+          });
+          wait.remove();
+          if (!res.ok || !data.reply) {
+            bubble(
+              "assistant",
+              data.reply ||
+                data.error ||
+                "Something went wrong (" + res.status + ").",
+              true,
+            );
+            $("in").value = text;
+            resize(); // give the message back so it can be resent
+            return;
+          }
+          var parsed = L.pullTags(data.reply);
+          var shown = parsed.clean || "Noted.";
+          var foot = bubble("assistant", shown);
+          if (isAdmin && data.model)
+            foot.appendChild(mk("span", "model", data.model));
+
+          await sb.from("lambert_conversations").insert([
+            { user_id: uid, role: "user", content: text, created_at: sentAt },
+            {
+              user_id: uid,
+              role: "assistant",
+              content: shown,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+          chatHistory.push(
+            { role: "user", content: text },
+            { role: "assistant", content: shown },
+          );
+
+          await applyTags(foot, parsed.tags);
+          await applyMisses(foot, data.actions || []);
+          toBottom();
+        } catch (e) {
+          if (wait.parentNode) wait.remove();
+          bubble(
+            "assistant",
+            "Couldn’t reach Lambert. Check your connection and try again.",
+            true,
+          );
+          $("in").value = text;
+          resize();
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      $("send").onclick = function () {
+        send($("in").value);
+      };
+      $("in").addEventListener("input", resize);
+      $("in").addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+          e.preventDefault();
+          send($("in").value);
+        }
+      });
+
+      (async function () {
+        if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY)
+          return gate("The site isn’t connected to its database yet.");
+        sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.replace("/login.html");
+          return;
+        }
+        uid = s.user.id;
+        var a = await sb
+          .from("user_access")
+          .select("status,is_admin")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (!a.data || (a.data.status !== "approved" && !a.data.is_admin)) {
+          location.replace("/app.html");
+          return;
+        }
+        isAdmin = !!a.data.is_admin;
+        await load();
+        $("gate").hidden = true;
+        $("top").hidden = $("feed").hidden = $("comp").hidden = false;
+        chatHistory.forEach(function (m) {
+          bubble(m.role, m.content);
+        });
+        if (!chatHistory.length) showEmpty();
+        toBottom();
+        $("in").focus();
+      })();
+    </script>
+  </body>
+</html>

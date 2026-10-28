@@ -483,6 +483,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="/api/config"></script>
+    <script src="/nav.js"></script>
     <script>
       var C = window.LAMBERT || {},
         GOAL = C.DAILY_GOAL_MIN || 180,
@@ -780,16 +781,14 @@
           });
           render();
         } else {
-          var r = await sb
-            .from("habit_logs")
-            .insert([
-              {
-                user_id: uid,
-                subject: sub,
-                duration: min,
-                habit_type: $("f-type").value,
-              },
-            ]);
+          var r = await sb.from("habit_logs").insert([
+            {
+              user_id: uid,
+              subject: sub,
+              duration: min,
+              habit_type: $("f-type").value,
+            },
+          ]);
           if (r.error) return alert(r.error.message);
           await load();
         }
