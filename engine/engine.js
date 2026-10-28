@@ -415,6 +415,19 @@ function validateState(state) {
   return errors;
 }
 
+function sanitizeTargets(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [subject, v] of Object.entries(raw)) {
+    const key = normText(subject);
+    const d = v ? Number(v.daysPerWeek) : NaN;
+    if (key && Number.isInteger(d) && d >= 1 && d <= 7) {
+      out[key] = { daysPerWeek: d };
+    }
+  }
+  return out;
+}
+
 module.exports = {
   BUILD_TYPE,
   dayKey,
@@ -432,4 +445,5 @@ module.exports = {
   FIX_FOR,
   buildState,
   validateState,
+  sanitizeTargets,
 };
