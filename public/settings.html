@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings — Lambert</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href="/icons/favicon-32.png"
+      sizes="32x32"
+      type="image/png"
+    />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.5;
+        padding-bottom: 60px;
+      }
+      .wrap {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 0 18px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.8rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .page {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 6px 0 4px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.88rem;
+        margin-bottom: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 14px;
+      }
+      .lab {
+        font-size: 0.68rem;
+        letter-spacing: 1.6px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      input,
+      select {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #0a1122;
+        color: var(--text);
+        font:
+          500 0.95rem Inter,
+          sans-serif;
+      }
+      input:focus,
+      select:focus {
+        outline: 2px solid rgba(245, 158, 11, 0.5);
+      }
+      .goalrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .goalrow input {
+        width: 120px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .goalrow span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .nm {
+        font-weight: 600;
+        font-size: 0.92rem;
+        overflow-wrap: anywhere;
+      }
+      .sm {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .save {
+        width: 100%;
+        padding: 14px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--amber);
+        color: #1a1000;
+        font:
+          700 0.95rem Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .save:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      .msg {
+        margin-bottom: 14px;
+        font-size: 0.84rem;
+        padding: 11px 13px;
+        border-radius: 10px;
+        display: none;
+      }
+      .msg.err {
+        display: block;
+        background: rgba(239, 68, 68, 0.12);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .msg.ok {
+        display: block;
+        background: rgba(16, 185, 129, 0.12);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.88rem;
+        padding: 6px 0;
+      }
+      .gate {
+        max-width: 420px;
+        margin: 20vh auto;
+        text-align: center;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gate" id="gate">Loading…</div>
+
+    <div class="wrap" id="app" hidden>
+      <header>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <div class="page">Settings</div>
+      </header>
+      <h1>Settings</h1>
+      <p class="sub">
+        These numbers drive your dashboard and what Lambert holds you to.
+      </p>
+      <div class="msg" id="msg" role="alert"></div>
+
+      <div class="card">
+        <div class="lab">Daily goal</div>
+        <div class="goalrow">
+          <input
+            id="goal"
+            type="number"
+            min="15"
+            max="1440"
+            step="5"
+            inputmode="numeric"
+            aria-label="Daily goal in minutes"
+          />
+          <span>minutes of build time per day</span>
+        </div>
+        <div class="hint">
+          Between 15 and 1440. The dashboard ring and your daily pace are
+          measured against this.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="lab">Habit targets</div>
+        <div class="hint" style="margin: 0 0 6px">
+          How many days a week you commit to each build habit. A habit with no
+          target gets no on-track or off-track status, and Lambert won’t ask why
+          you missed it.
+        </div>
+        <div id="targets"></div>
+      </div>
+
+      <button class="save" id="save" type="button">Save settings</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="/api/config"></script>
+    <script src="/nav.js"></script>
+    <script>
+      var C = window.LAMBERT || {},
+        sb = null,
+        uid = null,
+        S = null;
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function mk(tag, cls, txt) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt != null) e.textContent = txt;
+        return e;
+      }
+      function say(text, kind) {
+        var m = $("msg");
+        m.textContent = text || "";
+        m.className = "msg" + (text ? " " + kind : "");
+      }
+      function gate(text) {
+        $("gate").textContent = text;
+        $("gate").hidden = false;
+        $("app").hidden = true;
+      }
+
+      function render() {
+        $("goal").value = S.state.summary.dailyGoalMin;
+        var list = $("targets");
+        list.textContent = "";
+        var habits = S.state.habits.filter(function (h) {
+          return h.direction === "build";
+        });
+        if (!habits.length) {
+          list.appendChild(
+            mk(
+              "div",
+              "empty",
+              "Your build habits will appear here after you log them.",
+            ),
+          );
+          return;
+        }
+        habits.forEach(function (h) {
+          var row = mk("div", "row"),
+            left = mk("div");
+          left.appendChild(mk("div", "nm", h.subject));
+          left.appendChild(
+            mk("div", "sm", h.minutes14d + "m in the last 14 days"),
+          );
+          var sel = mk("select");
+          sel.setAttribute("aria-label", "Days per week for " + h.subject);
+          sel.dataset.subject = h.subject;
+          var none = mk("option", "", "No target");
+          none.value = "0";
+          sel.appendChild(none);
+          for (var d = 1; d <= 7; d++) {
+            var o = mk(
+              "option",
+              "",
+              d + (d === 1 ? " day a week" : " days a week"),
+            );
+            o.value = String(d);
+            sel.appendChild(o);
+          }
+          var cur =
+            S.targets && S.targets[h.subject]
+              ? S.targets[h.subject].daysPerWeek
+              : 0;
+          sel.value = String(cur);
+          row.appendChild(left);
+          row.appendChild(sel);
+          list.appendChild(row);
+        });
+      }
+
+      async function load() {
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.replace("/login.html");
+          return;
+        }
+        var res = await fetch("/api/state", {
+          headers: { Authorization: "Bearer " + s.access_token },
+        });
+        var data = await res.json().catch(function () {
+          return {};
+        });
+        if (res.status === 403) {
+          location.replace("/app.html");
+          return;
+        }
+        if (!res.ok)
+          throw new Error(
+            data.error || "Couldn’t load your settings (" + res.status + ")",
+          );
+        S = data;
+        render();
+        $("gate").hidden = true;
+        $("app").hidden = false;
+      }
+
+      $("save").onclick = async function () {
+        say("");
+        var goal = parseInt($("goal").value, 10);
+        if (!Number.isInteger(goal) || goal < 15 || goal > 1440)
+          return say(
+            "Daily goal must be a whole number from 15 to 1440 minutes.",
+            "err",
+          );
+        var targets = {};
+        [].forEach.call(
+          document.querySelectorAll("#targets select"),
+          function (sel) {
+            var d = parseInt(sel.value, 10);
+            if (d >= 1 && d <= 7)
+              targets[sel.dataset.subject] = { daysPerWeek: d };
+          },
+        );
+        var btn = $("save");
+        btn.disabled = true;
+        btn.textContent = "Saving…";
+        try {
+          var r = await sb
+            .from("lambert_settings")
+            .upsert(
+              [
+                {
+                  user_id: uid,
+                  daily_goal_min: goal,
+                  targets: targets,
+                  updated_at: new Date().toISOString(),
+                },
+              ],
+              { onConflict: "user_id" },
+            );
+          if (r.error)
+            return say(
+              "Couldn’t save: " +
+                r.error.message +
+                " (has settings.sql been run?)",
+              "err",
+            );
+          say("Saved. Your dashboard and Lambert now use these numbers.", "ok");
+          await load();
+        } catch (e) {
+          say("Couldn’t save: " + e.message, "err");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Save settings";
+        }
+      };
+
+      (async function () {
+        if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY)
+          return gate("The site isn’t connected to its database yet.");
+        sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.replace("/login.html");
+          return;
+        }
+        uid = s.user.id;
+        try {
+          await load();
+        } catch (e) {
+          gate(e.message);
+        }
+      })();
+    </script>
+  </body>
+</html>
