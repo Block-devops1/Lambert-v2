@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Today — Lambert</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.5;
+        padding-bottom: 50px;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 18px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.8rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .hr {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .out {
+        background: none;
+        border: 1px solid var(--line);
+        color: var(--text);
+        padding: 8px 14px;
+        border-radius: 10px;
+        font:
+          600 0.75rem Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .demo {
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        color: var(--amber);
+        font-size: 0.75rem;
+        padding: 9px 14px;
+        border-radius: 10px;
+        margin-bottom: 14px;
+        display: none;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+      }
+      .lab {
+        font-size: 0.68rem;
+        letter-spacing: 1.6px;
+        color: var(--muted);
+        margin-bottom: 10px;
+        text-transform: uppercase;
+      }
+      .brief {
+        border-left: 4px solid var(--amber);
+        margin-bottom: 14px;
+      }
+      .brief p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .big {
+        font-size: 1.9rem;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+      .big small {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .note {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .up {
+        color: var(--green);
+      }
+      .dn {
+        color: var(--red);
+      }
+      .ringrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .chip {
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .on {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green);
+      }
+      .adj {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .off {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+      }
+      .goal {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 14px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .goal b {
+        font-size: 1rem;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .nm {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .sm {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .dots {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .dots i {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        background: var(--line);
+      }
+      .dots i.h {
+        background: var(--green);
+      }
+      .rk {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+      }
+      .bar {
+        height: 5px;
+        background: var(--line);
+        border-radius: 3px;
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--red);
+        border-radius: 3px;
+      }
+      .chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        height: 150px;
+        position: relative;
+        margin-top: 6px;
+      }
+      .gl {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px dashed var(--amber);
+        opacity: 0.7;
+      }
+      .gl span {
+        position: absolute;
+        right: 0;
+        top: -17px;
+        font-size: 0.62rem;
+        color: var(--amber);
+      }
+      .col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
+        gap: 3px;
+      }
+      .stk {
+        width: 100%;
+        max-width: 34px;
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 2px;
+      }
+      .stk b {
+        display: block;
+        border-radius: 4px 4px 2px 2px;
+      }
+      .bd {
+        background: var(--green);
+      }
+      .sp {
+        background: var(--red);
+      }
+      .dl {
+        font-size: 0.65rem;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .leg {
+        display: flex;
+        gap: 14px;
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .leg span:before {
+        content: "";
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        margin-right: 6px;
+      }
+      .leg .a:before {
+        background: var(--green);
+      }
+      .leg .b:before {
+        background: var(--red);
+      }
+      .form {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr auto;
+        gap: 10px;
+      }
+      input,
+      select {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #0a1122;
+        color: var(--text);
+        font:
+          500 0.9rem Inter,
+          sans-serif;
+        width: 100%;
+      }
+      .add {
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--amber);
+        color: #1a1000;
+        font:
+          700 0.9rem Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.85rem;
+        padding: 8px 0;
+      }
+      .wait {
+        max-width: 420px;
+        margin: 18vh auto;
+        text-align: center;
+      }
+      .wait h2 {
+        margin-bottom: 10px;
+      }
+      .wait p {
+        color: var(--muted);
+      }
+      @media (max-width: 760px) {
+        .kpis {
+          grid-template-columns: 1fr 1fr;
+        }
+        .cols {
+          grid-template-columns: 1fr;
+        }
+        .form {
+          grid-template-columns: 1fr 1fr;
+        }
+        .form input:first-child {
+          grid-column: 1/-1;
+        }
+        .add {
+          grid-column: 1/-1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" id="app" hidden>
+      <header>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <div class="hr">
+          <span id="date"></span
+          ><button class="out" id="out" type="button">Sign out</button>
+        </div>
+      </header>
+      <div class="demo" id="demo">
+        Preview mode: showing sample data. Set SUPABASE_URL and
+        SUPABASE_ANON_KEY in Vercel env variables to see your real logs.
+      </div>
+
+      <div class="card brief">
+        <div class="lab">Lambert’s brief</div>
+        <p id="brief"></p>
+      </div>
+
+      <div class="kpis">
+        <div class="card">
+          <div class="lab">Today</div>
+          <div class="ringrow">
+            <svg width="62" height="62" viewBox="0 0 62 62">
+              <circle
+                cx="31"
+                cy="31"
+                r="26"
+                fill="none"
+                stroke="#1b2640"
+                stroke-width="7"
+              />
+              <circle
+                id="ring"
+                cx="31"
+                cy="31"
+                r="26"
+                fill="none"
+                stroke="#f59e0b"
+                stroke-width="7"
+                stroke-linecap="round"
+                stroke-dasharray="163.4"
+                stroke-dashoffset="163.4"
+                transform="rotate(-90 31 31)"
+              />
+            </svg>
+            <div>
+              <div class="big mono" id="k-today"></div>
+              <div class="note" id="k-today-n"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="lab">Streak</div>
+          <div class="big mono" id="k-streak"></div>
+          <div class="note">days with a build log</div>
+        </div>
+        <div class="card">
+          <div class="lab">This week</div>
+          <div class="big mono" id="k-week"></div>
+          <div class="note" id="k-week-n"></div>
+        </div>
+        <div class="card">
+          <div class="lab">Focus score</div>
+          <div class="big mono" id="k-eff"></div>
+          <div class="note">build time vs. disruptor time</div>
+        </div>
+      </div>
+
+      <div class="cols">
+        <div class="card">
+          <div class="lab">Season goal</div>
+          <div class="goal">
+            <b id="goal"></b><span class="chip" id="gchip"></span>
+          </div>
+          <div class="lab" style="margin-top: 12px">Habits this week</div>
+          <div id="habits"></div>
+        </div>
+        <div class="card">
+          <div class="lab">Top disruptors · 7 days</div>
+          <div id="dis"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 14px">
+        <div class="lab">Last 7 days</div>
+        <div class="chart" id="chart"></div>
+        <div class="leg">
+          <span class="a">Build</span><span class="b">Disruptors</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="lab">Log time</div>
+        <div class="form">
+          <input id="f-sub" placeholder="What did you do?" maxlength="60" />
+          <input
+            id="f-min"
+            type="number"
+            min="1"
+            max="1440"
+            placeholder="Minutes"
+          />
+          <select id="f-type">
+            <option value="build">Build</option>
+            <option value="stop">Disruptor</option>
+          </select>
+          <button class="add" id="add" type="button">Add</button>
+        </div>
+      </div>
+    </div>
+    <div class="wait" id="wait" hidden>
+      <h2>Waiting for access</h2>
+      <p>
+        Your account is created but hasn’t been approved yet. You’ll be able to
+        log in here once it is.
+      </p>
+      <br /><button class="out" id="out2" type="button">Sign out</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="/api/config"></script>
+    <script>
+      var C = window.LAMBERT || {},
+        GOAL = C.DAILY_GOAL_MIN || 180,
+        sb = null,
+        uid = null,
+        logs = [],
+        goalText = "";
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function day(d) {
+        return new Date(d).toLocaleDateString("en-CA");
+      }
+      function lastDays(n) {
+        var a = [];
+        for (var i = n - 1; i >= 0; i--) {
+          var d = new Date();
+          d.setDate(d.getDate() - i);
+          a.push(d);
+        }
+        return a;
+      }
+      function sum(arr) {
+        return arr.reduce(function (s, x) {
+          return s + x;
+        }, 0);
+      }
+      function mk(tag, cls, txt) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt != null) e.textContent = txt;
+        return e;
+      }
+
+      function demoData() {
+        var s = [
+            ["Deep work", "build", 90],
+            ["Reading", "build", 45],
+            ["Bible reading", "build", 20],
+            ["Workout", "build", 30],
+            ["Codm", "stop", 60],
+            ["Watching movies", "stop", 40],
+          ],
+          out = [];
+        for (var i = 0; i < 7; i++) {
+          var d = new Date();
+          d.setDate(d.getDate() - i);
+          s.forEach(function (x, j) {
+            if ((i * 3 + j) % 4 !== 3 && !(i === 0 && x[1] === "stop"))
+              out.push({
+                subject: x[0],
+                habit_type: x[1],
+                duration: x[2] + ((i * 7) % 20),
+                created_at: d.toISOString(),
+              });
+          });
+        }
+        return out;
+      }
+
+      function render() {
+        var days = lastDays(14),
+          keys = days.map(day);
+        var per = {};
+        keys.forEach(function (k) {
+          per[k] = { b: 0, s: 0 };
+        });
+        logs.forEach(function (l) {
+          var k = day(l.created_at);
+          if (per[k])
+            per[k][l.habit_type === "stop" ? "s" : "b"] += l.duration || 0;
+        });
+        var w = keys.slice(7),
+          pw = keys.slice(0, 7);
+        var wb = sum(
+            w.map(function (k) {
+              return per[k].b;
+            }),
+          ),
+          ws = sum(
+            w.map(function (k) {
+              return per[k].s;
+            }),
+          );
+        var pb = sum(
+          pw.map(function (k) {
+            return per[k].b;
+          }),
+        );
+        var today = per[keys[13]].b;
+
+        var streak = 0,
+          i = 13;
+        if (per[keys[i]].b === 0) i--;
+        for (; i >= 0 && per[keys[i]].b > 0; i--) streak++;
+        var eff = wb + ws ? Math.round((wb / (wb + ws)) * 100) : 0;
+        var delta = pb ? Math.round(((wb - pb) / pb) * 100) : null;
+
+        $("k-today").innerHTML = today + "<small> / " + GOAL + "m</small>";
+        $("ring").style.strokeDashoffset =
+          163.4 * (1 - Math.min(1, today / GOAL));
+        $("k-today-n").textContent =
+          today >= GOAL ? "Goal reached" : GOAL - today + "m to go";
+        $("k-streak").textContent = streak;
+        $("k-week").innerHTML = wb + "<small>m</small>";
+        var wn = $("k-week-n");
+        if (delta === null) wn.textContent = "No data last week";
+        else {
+          wn.textContent =
+            (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta) + "% vs last week";
+          wn.className = "note " + (delta >= 0 ? "up" : "dn");
+        }
+        $("k-eff").innerHTML = eff + "<small>%</small>";
+
+        // per-habit status (days logged in last 7) and disruptors
+        var hab = {},
+          dis = {};
+        logs.forEach(function (l) {
+          var k = day(l.created_at);
+          if (keys.slice(7).indexOf(k) < 0) return;
+          if (l.habit_type === "stop")
+            dis[l.subject] = (dis[l.subject] || 0) + (l.duration || 0);
+          else {
+            hab[l.subject] = hab[l.subject] || { m: 0, d: {} };
+            hab[l.subject].m += l.duration || 0;
+            hab[l.subject].d[k] = 1;
+          }
+        });
+        var hl = $("habits");
+        hl.textContent = "";
+        var names = Object.keys(hab).sort(function (a, b) {
+          return (
+            Object.keys(hab[b].d).length - Object.keys(hab[a].d).length ||
+            hab[b].m - hab[a].m
+          );
+        });
+        if (!names.length)
+          hl.appendChild(
+            mk("div", "empty", "No build habits logged this week yet."),
+          );
+        names.slice(0, 6).forEach(function (n) {
+          var dn = Object.keys(hab[n].d).length,
+            st =
+              dn >= 5
+                ? ["on", "ON TRACK"]
+                : dn >= 3
+                  ? ["adj", "ADJUST"]
+                  : ["off", "OFF TRACK"];
+          var r = mk("div", "row"),
+            l = mk("div"),
+            dots = mk("div", "dots");
+          l.appendChild(mk("div", "nm", n));
+          l.appendChild(mk("div", "sm", hab[n].m + "m · " + dn + "/7 days"));
+          keys.slice(7).forEach(function (k) {
+            dots.appendChild(mk("i", hab[n].d[k] ? "h" : ""));
+          });
+          l.appendChild(dots);
+          r.appendChild(l);
+          r.appendChild(mk("span", "chip " + st[0], st[1]));
+          hl.appendChild(r);
+        });
+
+        var dl = $("dis");
+        dl.textContent = "";
+        var dn2 = Object.keys(dis)
+          .sort(function (a, b) {
+            return dis[b] - dis[a];
+          })
+          .slice(0, 5);
+        if (!dn2.length)
+          dl.appendChild(
+            mk("div", "empty", "No disruptors logged. Keep it up."),
+          );
+        dn2.forEach(function (n) {
+          var r = mk("div", "rk");
+          r.appendChild(mk("span", "", n));
+          r.appendChild(mk("span", "mono dn", dis[n] + "m"));
+          dl.appendChild(r);
+          var b = mk("div", "bar"),
+            f = mk("i");
+          f.style.width = Math.round((dis[n] / dis[dn2[0]]) * 100) + "%";
+          b.appendChild(f);
+          dl.appendChild(b);
+        });
+
+        // goal status from average daily build vs the daily goal
+        var avg = wb / 7,
+          ratio = avg / GOAL,
+          g =
+            ratio >= 0.8
+              ? ["on", "ON TRACK"]
+              : ratio >= 0.5
+                ? ["adj", "ADJUST"]
+                : ["off", "OFF TRACK"];
+        $("goal").textContent = goalText || "No season goal set yet";
+        $("gchip").className = "chip " + g[0];
+        $("gchip").textContent = g[1];
+
+        // chart
+        var ch = $("chart");
+        ch.textContent = "";
+        var max = Math.max(
+          GOAL * 1.15,
+          Math.max.apply(
+            null,
+            w.map(function (k) {
+              return per[k].b + per[k].s;
+            }),
+          ),
+        );
+        var gl = mk("div", "gl");
+        gl.style.bottom = "calc(" + (GOAL / max) * 100 + "% * .86 + 20px)";
+        gl.appendChild(mk("span", "", "Goal " + GOAL + "m"));
+        ch.appendChild(gl);
+        var chartH = 150 - 20;
+        w.forEach(function (k, idx) {
+          var c = mk("div", "col"),
+            s = mk("div", "stk"),
+            b = mk("b", "bd"),
+            p = mk("b", "sp");
+          b.style.height = Math.round((per[k].b / max) * chartH) + "px";
+          p.style.height = Math.round((per[k].s / max) * chartH) + "px";
+          s.appendChild(b);
+          s.appendChild(p);
+          c.appendChild(s);
+          c.appendChild(
+            mk(
+              "div",
+              "dl",
+              days.slice(7)[idx].toLocaleDateString("en", { weekday: "short" }),
+            ),
+          );
+          ch.appendChild(c);
+        });
+
+        // brief, written by code from the numbers above
+        var top = dn2[0],
+          msg =
+            today >= GOAL
+              ? "Daily goal hit: " + today + " minutes built."
+              : today +
+                " of " +
+                GOAL +
+                " minutes built today. " +
+                (GOAL - today) +
+                " to go.";
+        if (streak > 1) msg += " " + streak + "-day streak.";
+        if (top)
+          msg +=
+            " Biggest disruptor this week: " + top + " (" + dis[top] + "m).";
+        $("brief").textContent = msg;
+      }
+
+      async function load() {
+        var r = await sb
+          .from("habit_logs")
+          .select("subject,duration,habit_type,created_at")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        logs = r.data || [];
+        var g = await sb
+          .from("lambert_goals")
+          .select("goal")
+          .eq("user_id", uid)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        goalText = g.data && g.data[0] ? g.data[0].goal : "";
+        render();
+      }
+
+      async function signOut() {
+        if (sb) await sb.auth.signOut();
+        location.href = "/login.html";
+      }
+      $("out").onclick = signOut;
+      $("out2").onclick = signOut;
+      $("date").textContent = new Date().toLocaleDateString("en", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      });
+
+      $("add").onclick = async function () {
+        var sub = $("f-sub").value.replace(/[<>]/g, "").trim(),
+          min = parseInt($("f-min").value, 10);
+        if (!sub || !min || min < 1) return;
+        if (!sb) {
+          logs.unshift({
+            subject: sub,
+            habit_type: $("f-type").value,
+            duration: min,
+            created_at: new Date().toISOString(),
+          });
+          render();
+        } else {
+          var r = await sb
+            .from("habit_logs")
+            .insert([
+              {
+                user_id: uid,
+                subject: sub,
+                duration: min,
+                habit_type: $("f-type").value,
+              },
+            ]);
+          if (r.error) return alert(r.error.message);
+          await load();
+        }
+        $("f-sub").value = "";
+        $("f-min").value = "";
+      };
+
+      (async function () {
+        if (!C.SUPABASE_URL || !C.SUPABASE_ANON_KEY) {
+          $("demo").style.display = "block";
+          logs = demoData();
+          goalText = "Finish the Evueo MVP";
+          $("app").hidden = false;
+          return render();
+        }
+        sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.href = "/login.html";
+          return;
+        }
+        uid = s.user.id;
+        var a = await sb
+          .from("user_access")
+          .select("status,is_admin")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (!a.data || (a.data.status !== "approved" && !a.data.is_admin)) {
+          $("wait").hidden = false;
+          return;
+        }
+        $("app").hidden = false;
+        await load();
+      })();
+    </script>
+  </body>
+</html>

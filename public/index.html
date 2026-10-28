@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lambert — a habit tracker that tells you the truth</title>
+    <meta
+      name="description"
+      content="Log what you build and what drags you down. Lambert shows the real numbers."
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.55;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 22px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.85rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .btn {
+        display: inline-block;
+        text-decoration: none;
+        font:
+          700 0.9rem Inter,
+          sans-serif;
+        padding: 13px 22px;
+        border-radius: 12px;
+        cursor: pointer;
+        border: 0;
+      }
+      .btn.pri {
+        background: var(--amber);
+        color: #1a1000;
+      }
+      .btn.sec {
+        background: none;
+        border: 1px solid var(--line);
+        color: var(--text);
+      }
+      nav .btn {
+        padding: 9px 16px;
+        font-size: 0.78rem;
+      }
+      .hero {
+        padding: 70px 0 54px;
+      }
+      .eyebrow {
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--amber);
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: clamp(2rem, 6vw, 3.4rem);
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        max-width: 760px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 1.1rem;
+        max-width: 620px;
+        margin: 20px 0 30px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .preview {
+        margin: 10px 0 60px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+      }
+      .lab {
+        font-size: 0.68rem;
+        letter-spacing: 1.6px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .big {
+        font-size: 1.9rem;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+      .big small {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .note {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .up {
+        color: var(--green);
+      }
+      .dn {
+        color: var(--red);
+      }
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-bottom: 22px;
+      }
+      .feat {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 60px;
+      }
+      .feat h3 {
+        font-size: 1rem;
+        margin-bottom: 8px;
+      }
+      .feat p {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .soon {
+        display: inline-block;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: var(--amber);
+        background: rgba(245, 158, 11, 0.12);
+        border-radius: 99px;
+        padding: 3px 9px;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 60px;
+      }
+      .step .n {
+        font-weight: 700;
+        color: var(--amber);
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+      }
+      .step p {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .final {
+        text-align: center;
+        padding: 44px 20px;
+        border-radius: 22px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        margin-bottom: 50px;
+      }
+      .final h2 {
+        margin-bottom: 10px;
+      }
+      .final p {
+        color: var(--muted);
+        margin-bottom: 22px;
+      }
+      footer {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-align: center;
+        padding: 0 0 40px;
+      }
+      @media (max-width: 760px) {
+        .preview,
+        .feat,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          padding-top: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <a class="btn sec" href="/login.html">Log in</a>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">HABIT TRACKING WITHOUT THE FLATTERY</div>
+        <h1>A habit tracker that tells you the truth.</h1>
+        <p class="sub">
+          Log what you build and what drags you down. Lambert turns your minutes
+          into streaks, weekly totals and a focus score, so a bad week can’t
+          pass as a good one.
+        </p>
+        <div class="cta">
+          <a class="btn pri" href="/login.html#signup">Get started</a>
+          <a class="btn sec" href="/login.html">I already have an account</a>
+        </div>
+      </section>
+
+      <section class="preview" aria-label="Example numbers">
+        <div class="card">
+          <div class="lab">Today</div>
+          <div class="big mono">112<small> / 180m</small></div>
+          <div class="note">68m to go</div>
+        </div>
+        <div class="card">
+          <div class="lab">Streak</div>
+          <div class="big mono">6</div>
+          <div class="note">days with a build log</div>
+        </div>
+        <div class="card">
+          <div class="lab">This week</div>
+          <div class="big mono">640<small>m</small></div>
+          <div class="note dn">▼ 12% vs last week</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>What it does</h2>
+        <div class="feat">
+          <div class="card">
+            <h3>Build vs. disruptors</h3>
+            <p>
+              Every log is either time you built or time you lost. You see both
+              side by side, every day, with nothing hidden in an average.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Numbers computed, not guessed</h3>
+            <p>
+              Streaks, weekly pace and your focus score are calculated from your
+              logs by code. The same numbers show up everywhere.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Lambert, the coach<span class="soon">COMING NEXT</span></h3>
+            <p>
+              A blunt AI coach that reads those same numbers, asks why when you
+              miss a habit, and holds you to a fix.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>How it works</h2>
+        <div class="steps">
+          <div class="card step">
+            <div class="n mono">01</div>
+            <p>Create an account with your email.</p>
+          </div>
+          <div class="card step">
+            <div class="n mono">02</div>
+            <p>Wait for approval. Access is approved by hand for now.</p>
+          </div>
+          <div class="card step">
+            <div class="n mono">03</div>
+            <p>Log your first session and watch the numbers move.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="final">
+        <h2>Start with one honest day.</h2>
+        <p>It takes a minute to sign up.</p>
+        <a class="btn pri" href="/login.html#signup">Create your account</a>
+      </section>
+
+      <footer>Lambert</footer>
+    </div>
+  </body>
+</html>
