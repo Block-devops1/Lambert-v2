@@ -9,6 +9,7 @@
   var LINKS = [
     { href: "/app.html", label: "Dashboard" },
     { href: "/coach.html", label: "Coach" },
+    { href: "/settings.html", label: "Settings" },
     { href: "/admin.html", label: "Admin", admin: true },
   ];
 
