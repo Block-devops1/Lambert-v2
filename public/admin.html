@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Users — Lambert</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.5;
+        padding-bottom: 50px;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 0 18px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.8rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .page {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 6px 0 4px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.88rem;
+        margin-bottom: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 8px 18px;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .tabs button {
+        border: 1px solid var(--line);
+        background: none;
+        color: var(--muted);
+        font:
+          600 0.8rem Inter,
+          sans-serif;
+        padding: 9px 14px;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+      .tabs button.on {
+        background: var(--card);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--amber);
+      }
+      .tabs b {
+        font-family: "JetBrains Mono", monospace;
+        margin-left: 6px;
+        color: var(--amber);
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .who {
+        min-width: 0;
+        flex: 1 1 240px;
+      }
+      .em {
+        font-weight: 600;
+        font-size: 0.92rem;
+        overflow-wrap: anywhere;
+      }
+      .meta {
+        font-size: 0.74rem;
+        color: var(--muted);
+        margin-top: 3px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-size: 0.64rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 99px;
+        letter-spacing: 0.5px;
+      }
+      .pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .approved {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green);
+      }
+      .blacklisted {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+      }
+      .adm {
+        background: rgba(134, 147, 173, 0.18);
+        color: var(--text);
+      }
+      .acts {
+        display: flex;
+        gap: 8px;
+      }
+      .b {
+        border: 0;
+        border-radius: 9px;
+        padding: 9px 14px;
+        font:
+          700 0.78rem Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .b:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .ok {
+        background: var(--green);
+        color: #03150e;
+      }
+      .no {
+        background: none;
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        color: #fca5a5;
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.88rem;
+        padding: 22px 0;
+        text-align: center;
+      }
+      .msg {
+        margin-bottom: 14px;
+        font-size: 0.84rem;
+        padding: 11px 13px;
+        border-radius: 10px;
+        display: none;
+      }
+      .msg.err {
+        display: block;
+        background: rgba(239, 68, 68, 0.12);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .msg.ok {
+        display: block;
+        background: rgba(16, 185, 129, 0.12);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .gate {
+        max-width: 420px;
+        margin: 20vh auto;
+        text-align: center;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gate" id="gate">Checking access…</div>
+
+    <div class="wrap" id="app" hidden>
+      <header>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <div class="page">Admin</div>
+      </header>
+      <h1>Users</h1>
+      <p class="sub">
+        Approve or block people who sign up. Changes apply the next time they
+        load the app.
+      </p>
+      <div class="msg" id="msg" role="alert"></div>
+      <div class="tabs" id="tabs"></div>
+      <div class="card" id="list"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="/api/config"></script>
+    <script src="/nav.js"></script>
+    <script>
+      var C = window.LAMBERT || {},
+        sb = null,
+        me = null,
+        rows = [],
+        filter = "pending";
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function mk(tag, cls, txt) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt != null) e.textContent = txt;
+        return e;
+      }
+      function say(text, kind) {
+        var m = $("msg");
+        m.textContent = text || "";
+        m.className = "msg" + (text ? " " + kind : "");
+      }
+      function gate(text) {
+        $("gate").textContent = text;
+        $("gate").hidden = false;
+        $("app").hidden = true;
+      }
+
+      var TABS = [
+        ["pending", "Pending"],
+        ["approved", "Approved"],
+        ["blacklisted", "Blocked"],
+        ["all", "All"],
+      ];
+
+      function count(f) {
+        return f === "all"
+          ? rows.length
+          : rows.filter(function (r) {
+              return r.status === f;
+            }).length;
+      }
+
+      function render() {
+        var tabs = $("tabs");
+        tabs.textContent = "";
+        TABS.forEach(function (t) {
+          var b = mk("button", filter === t[0] ? "on" : "", t[1]);
+          b.type = "button";
+          b.appendChild(mk("b", "", String(count(t[0]))));
+          b.onclick = function () {
+            filter = t[0];
+            render();
+          };
+          tabs.appendChild(b);
+        });
+
+        var list = $("list");
+        list.textContent = "";
+        var shown = rows.filter(function (r) {
+          return filter === "all" || r.status === filter;
+        });
+        if (!shown.length) {
+          list.appendChild(
+            mk(
+              "div",
+              "empty",
+              filter === "pending"
+                ? "No one is waiting for approval."
+                : "No users here.",
+            ),
+          );
+          return;
+        }
+
+        shown.forEach(function (r) {
+          var row = mk("div", "row"),
+            who = mk("div", "who"),
+            meta = mk("div", "meta");
+          who.appendChild(mk("div", "em", r.email || "(no email stored)"));
+          meta.appendChild(
+            mk("span", "chip " + r.status, String(r.status).toUpperCase()),
+          );
+          if (r.is_admin) meta.appendChild(mk("span", "chip adm", "ADMIN"));
+          if (r.user_id === me) meta.appendChild(mk("span", "", "you"));
+          meta.appendChild(
+            mk(
+              "span",
+              "",
+              "joined " +
+                new Date(r.created_at).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+            ),
+          );
+          who.appendChild(meta);
+          row.appendChild(who);
+
+          // You can't change your own access: that is how admins lock themselves out.
+          if (r.user_id !== me) {
+            var acts = mk("div", "acts");
+            if (r.status !== "approved")
+              acts.appendChild(action("Approve", "ok", r, "approved"));
+            if (r.status !== "blacklisted")
+              acts.appendChild(action("Block", "no", r, "blacklisted"));
+            row.appendChild(acts);
+          }
+          list.appendChild(row);
+        });
+      }
+
+      function action(label, cls, r, status) {
+        var b = mk("button", "b " + cls, label);
+        b.type = "button";
+        b.onclick = async function () {
+          if (
+            status === "blacklisted" &&
+            !confirm("Block " + (r.email || "this user") + "?")
+          )
+            return;
+          b.disabled = true;
+          say("");
+          var res = await sb
+            .from("user_access")
+            .update({ status: status })
+            .eq("user_id", r.user_id)
+            .select("user_id,status");
+          if (res.error) {
+            b.disabled = false;
+            return say(res.error.message, "err");
+          }
+          if (!res.data || !res.data.length) {
+            b.disabled = false;
+            return say(
+              "Nothing changed. Run admin-setup.sql so admins are allowed to update users.",
+              "err",
+            );
+          }
+          r.status = status;
+          render();
+          say(
+            (r.email || "User") +
+              " is now " +
+              (status === "approved" ? "approved." : "blocked."),
+            "ok",
+          );
+        };
+        return b;
+      }
+
+      async function load() {
+        var res = await sb
+          .from("user_access")
+          .select("user_id,email,status,is_admin,created_at")
+          .order("created_at", { ascending: false });
+        if (res.error)
+          return say(
+            res.error.message + " (run admin-setup.sql in Supabase)",
+            "err",
+          );
+        rows = res.data || [];
+        if (!count("pending") && filter === "pending") filter = "pending";
+        render();
+      }
+
+      (async function () {
+        if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY)
+          return gate("The site isn’t connected to its database yet.");
+        sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.replace("/login.html");
+          return;
+        }
+        me = s.user.id;
+        var a = await sb
+          .from("user_access")
+          .select("is_admin")
+          .eq("user_id", me)
+          .maybeSingle();
+        if (!a.data || !a.data.is_admin) {
+          location.replace("/app.html");
+          return;
+        }
+        $("gate").hidden = true;
+        $("app").hidden = false;
+        await load();
+      })();
+    </script>
+  </body>
+</html>
