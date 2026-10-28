@@ -341,6 +341,13 @@
         font-size: 0.85rem;
         padding: 8px 0;
       }
+      .chip.none {
+        background: rgba(134, 147, 173, 0.15);
+        color: var(--muted);
+      }
+      a.chip {
+        text-decoration: none;
+      }
       .wait {
         max-width: 420px;
         margin: 18vh auto;
@@ -380,10 +387,7 @@
           ><button class="out" id="out" type="button">Sign out</button>
         </div>
       </header>
-      <div class="demo" id="demo">
-        Preview mode: showing sample data. Set SUPABASE_URL and
-        SUPABASE_ANON_KEY in Vercel env variables to see your real logs.
-      </div>
+      <div class="demo" id="demo"></div>
 
       <div class="card brief">
         <div class="lab">Lambert’s brief</div>
@@ -429,7 +433,7 @@
           <div class="note">days with a build log</div>
         </div>
         <div class="card">
-          <div class="lab">This week</div>
+          <div class="lab">Last 7 days</div>
           <div class="big mono" id="k-week"></div>
           <div class="note" id="k-week-n"></div>
         </div>
@@ -443,10 +447,17 @@
       <div class="cols">
         <div class="card">
           <div class="lab">Season goal</div>
-          <div class="goal">
-            <b id="goal"></b><span class="chip" id="gchip"></span>
+          <div class="goal"><b id="goal"></b></div>
+          <div class="row" style="border-bottom: 0; padding-top: 0">
+            <div>
+              <div class="nm">
+                Daily target <span class="mono" id="dtarget"></span>
+              </div>
+              <div class="sm" id="dpace"></div>
+            </div>
+            <span class="chip" id="gchip"></span>
           </div>
-          <div class="lab" style="margin-top: 12px">Habits this week</div>
+          <div class="lab" style="margin-top: 12px">Habits · last 7 days</div>
           <div id="habits"></div>
         </div>
         <div class="card">
@@ -475,7 +486,7 @@
             placeholder="Minutes"
           />
           <select id="f-type">
-            <option value="build">Build</option>
+            <option value="continue">Build</option>
             <option value="stop">Disruptor</option>
           </select>
           <button class="add" id="add" type="button">Add</button>
@@ -496,101 +507,71 @@
     <script src="/nav.js"></script>
     <script>
       var C = window.LAMBERT || {},
-        GOAL = C.DAILY_GOAL_MIN || 180,
         sb = null,
         uid = null,
-        logs = [],
-        goalText = "";
+        S = null;
       var $ = function (id) {
         return document.getElementById(id);
       };
-      function day(d) {
-        return new Date(d).toLocaleDateString("en-CA");
-      }
-      function lastDays(n) {
-        var a = [];
-        for (var i = n - 1; i >= 0; i--) {
-          var d = new Date();
-          d.setDate(d.getDate() - i);
-          a.push(d);
-        }
-        return a;
-      }
-      function sum(arr) {
-        return arr.reduce(function (s, x) {
-          return s + x;
-        }, 0);
-      }
       function mk(tag, cls, txt) {
         var e = document.createElement(tag);
         if (cls) e.className = cls;
         if (txt != null) e.textContent = txt;
         return e;
       }
+      var STATUS = {
+        on_track: ["on", "ON TRACK"],
+        adjust: ["adj", "ADJUST"],
+        off_track: ["off", "OFF TRACK"],
+        met: ["on", "TARGET MET"],
+      };
 
-      function demoData() {
-        var s = [
-            ["Deep work", "build", 90],
-            ["Reading", "build", 45],
-            ["Bible reading", "build", 20],
-            ["Workout", "build", 30],
-            ["Codm", "stop", 60],
-            ["Watching movies", "stop", 40],
-          ],
-          out = [];
-        for (var i = 0; i < 7; i++) {
-          var d = new Date();
-          d.setDate(d.getDate() - i);
-          s.forEach(function (x, j) {
-            if ((i * 3 + j) % 4 !== 3 && !(i === 0 && x[1] === "stop"))
-              out.push({
-                subject: x[0],
-                habit_type: x[1],
-                duration: x[2] + ((i * 7) % 20),
-                created_at: d.toISOString(),
-              });
-          });
+      function notice(text) {
+        var n = $("demo");
+        n.textContent = text || "";
+        n.style.display = text ? "block" : "none";
+      }
+
+      // Every number on this page comes from /api/state, which runs the same
+      // engine the coach reads. This page only draws it.
+      async function loadState() {
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.href = "/login.html";
+          return;
         }
-        return out;
+        var res = await fetch("/api/state", {
+          headers: { Authorization: "Bearer " + s.access_token },
+        });
+        var data = await res.json().catch(function () {
+          return {};
+        });
+        if (res.status === 403) {
+          $("app").hidden = true;
+          $("wait").hidden = false;
+          return;
+        }
+        if (!res.ok)
+          throw new Error(
+            data.error || "Couldn’t load your numbers (" + res.status + ")",
+          );
+        S = data;
+        var warn = [];
+        if (data.warnings && data.warnings.length)
+          warn.push("Settings unavailable, using defaults.");
+        if (data.logsTruncated)
+          warn.push("Only your latest 2000 logs are counted.");
+        notice(warn.join(" "));
+        $("app").hidden = false;
+        render();
       }
 
       function render() {
-        var days = lastDays(14),
-          keys = days.map(day);
-        var per = {};
-        keys.forEach(function (k) {
-          per[k] = { b: 0, s: 0 };
-        });
-        logs.forEach(function (l) {
-          var k = day(l.created_at);
-          if (per[k])
-            per[k][l.habit_type === "stop" ? "s" : "b"] += l.duration || 0;
-        });
-        var w = keys.slice(7),
-          pw = keys.slice(0, 7);
-        var wb = sum(
-            w.map(function (k) {
-              return per[k].b;
-            }),
-          ),
-          ws = sum(
-            w.map(function (k) {
-              return per[k].s;
-            }),
-          );
-        var pb = sum(
-          pw.map(function (k) {
-            return per[k].b;
-          }),
-        );
-        var today = per[keys[13]].b;
-
-        var streak = 0,
-          i = 13;
-        if (per[keys[i]].b === 0) i--;
-        for (; i >= 0 && per[keys[i]].b > 0; i--) streak++;
-        var eff = wb + ws ? Math.round((wb / (wb + ws)) * 100) : 0;
-        var delta = pb ? Math.round(((wb - pb) / pb) * 100) : null;
+        var st = S.state,
+          sm = st.summary,
+          GOAL = sm.dailyGoalMin,
+          today = sm.todayBuild,
+          streak = st.overall.buildStreakDays;
 
         $("k-today").innerHTML = today + "<small> / " + GOAL + "m</small>";
         $("ring").style.strokeDashoffset =
@@ -598,109 +579,122 @@
         $("k-today-n").textContent =
           today >= GOAL ? "Goal reached" : GOAL - today + "m to go";
         $("k-streak").textContent = streak;
-        $("k-week").innerHTML = wb + "<small>m</small>";
+        $("k-week").innerHTML = sm.last7Build + "<small>m</small>";
         var wn = $("k-week-n");
-        if (delta === null) wn.textContent = "No data last week";
-        else {
+        if (!sm.prev7Build) {
+          wn.textContent = "No data in the 7 days before";
+          wn.className = "note";
+        } else {
+          var delta = Math.round(
+            ((sm.last7Build - sm.prev7Build) / sm.prev7Build) * 100,
+          );
           wn.textContent =
-            (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta) + "% vs last week";
+            (delta >= 0 ? "▲ " : "▼ ") +
+            Math.abs(delta) +
+            "% vs the 7 days before";
           wn.className = "note " + (delta >= 0 ? "up" : "dn");
         }
-        $("k-eff").innerHTML = eff + "<small>%</small>";
+        $("k-eff").innerHTML =
+          sm.focusScore == null ? "—" : sm.focusScore + "<small>%</small>";
 
-        // per-habit status (days logged in last 7) and disruptors
-        var hab = {},
-          dis = {};
-        logs.forEach(function (l) {
-          var k = day(l.created_at);
-          if (keys.slice(7).indexOf(k) < 0) return;
-          if (l.habit_type === "stop")
-            dis[l.subject] = (dis[l.subject] || 0) + (l.duration || 0);
-          else {
-            hab[l.subject] = hab[l.subject] || { m: 0, d: {} };
-            hab[l.subject].m += l.duration || 0;
-            hab[l.subject].d[k] = 1;
-          }
-        });
+        // Habits: status comes from the engine, and only exists where a target is set.
         var hl = $("habits");
         hl.textContent = "";
-        var names = Object.keys(hab).sort(function (a, b) {
-          return (
-            Object.keys(hab[b].d).length - Object.keys(hab[a].d).length ||
-            hab[b].m - hab[a].m
-          );
-        });
-        if (!names.length)
+        var build = st.habits
+          .filter(function (h) {
+            return (
+              h.direction === "build" &&
+              (h.minutes7d > 0 || h.targetDaysPerWeek != null)
+            );
+          })
+          .sort(function (a, b) {
+            return b.days7d - a.days7d || b.minutes7d - a.minutes7d;
+          })
+          .slice(0, 6);
+        if (!build.length)
           hl.appendChild(
-            mk("div", "empty", "No build habits logged this week yet."),
+            mk("div", "empty", "No build habits logged in the last 7 days."),
           );
-        names.slice(0, 6).forEach(function (n) {
-          var dn = Object.keys(hab[n].d).length,
-            st =
-              dn >= 5
-                ? ["on", "ON TRACK"]
-                : dn >= 3
-                  ? ["adj", "ADJUST"]
-                  : ["off", "OFF TRACK"];
+        build.forEach(function (h) {
           var r = mk("div", "row"),
             l = mk("div"),
             dots = mk("div", "dots");
-          l.appendChild(mk("div", "nm", n));
-          l.appendChild(mk("div", "sm", hab[n].m + "m · " + dn + "/7 days"));
-          keys.slice(7).forEach(function (k) {
-            dots.appendChild(mk("i", hab[n].d[k] ? "h" : ""));
+          l.appendChild(mk("div", "nm", h.subject));
+          l.appendChild(
+            mk(
+              "div",
+              "sm",
+              h.minutes7d +
+                "m · " +
+                h.days7d +
+                "/7 days" +
+                (h.targetDaysPerWeek != null
+                  ? " · target " + h.targetDaysPerWeek + "/week"
+                  : ""),
+            ),
+          );
+          h.last7Days.forEach(function (done) {
+            dots.appendChild(mk("i", done ? "h" : ""));
           });
           l.appendChild(dots);
           r.appendChild(l);
-          r.appendChild(mk("span", "chip " + st[0], st[1]));
+          var s = STATUS[h.status];
+          if (s) r.appendChild(mk("span", "chip " + s[0], s[1]));
+          else {
+            var a = mk("a", "chip none", "SET TARGET");
+            a.href = "/settings.html";
+            r.appendChild(a);
+          }
           hl.appendChild(r);
         });
 
         var dl = $("dis");
         dl.textContent = "";
-        var dn2 = Object.keys(dis)
+        var stop = st.habits
+          .filter(function (h) {
+            return h.direction === "stop" && h.minutes7d > 0;
+          })
           .sort(function (a, b) {
-            return dis[b] - dis[a];
+            return b.minutes7d - a.minutes7d;
           })
           .slice(0, 5);
-        if (!dn2.length)
+        if (!stop.length)
           dl.appendChild(
             mk("div", "empty", "No disruptors logged. Keep it up."),
           );
-        dn2.forEach(function (n) {
+        stop.forEach(function (h) {
           var r = mk("div", "rk");
-          r.appendChild(mk("span", "", n));
-          r.appendChild(mk("span", "mono dn", dis[n] + "m"));
+          r.appendChild(mk("span", "", h.subject));
+          r.appendChild(mk("span", "mono dn", h.minutes7d + "m"));
           dl.appendChild(r);
           var b = mk("div", "bar"),
             f = mk("i");
-          f.style.width = Math.round((dis[n] / dis[dn2[0]]) * 100) + "%";
+          f.style.width =
+            Math.round((h.minutes7d / stop[0].minutes7d) * 100) + "%";
           b.appendChild(f);
           dl.appendChild(b);
         });
 
-        // goal status from average daily build vs the daily goal
-        var avg = wb / 7,
-          ratio = avg / GOAL,
-          g =
-            ratio >= 0.8
-              ? ["on", "ON TRACK"]
-              : ratio >= 0.5
-                ? ["adj", "ADJUST"]
-                : ["off", "OFF TRACK"];
-        $("goal").textContent = goalText || "No season goal set yet";
+        // Goal card: the chip belongs to the daily target, which always exists.
+        $("goal").textContent =
+          S.goalText || "No season goal set yet. Tell Lambert one in Coach.";
+        $("dtarget").textContent = GOAL + "m a day";
+        $("dpace").textContent =
+          "Last 7 days averaged " + sm.avgBuildPerDay + "m a day";
+        var g = STATUS[sm.paceStatus];
         $("gchip").className = "chip " + g[0];
         $("gchip").textContent = g[1];
 
-        // chart
-        var ch = $("chart");
+        // Chart: the last 7 days of st.daily
+        var w = st.daily.slice(7),
+          ch = $("chart");
         ch.textContent = "";
         var max = Math.max(
           GOAL * 1.15,
           Math.max.apply(
             null,
-            w.map(function (k) {
-              return per[k].b + per[k].s;
+            w.map(function (d) {
+              return d.build + d.stop;
             }),
           ),
         );
@@ -709,13 +703,13 @@
         gl.appendChild(mk("span", "", "Goal " + GOAL + "m"));
         ch.appendChild(gl);
         var chartH = 150 - 20;
-        w.forEach(function (k, idx) {
+        w.forEach(function (d) {
           var c = mk("div", "col"),
             s = mk("div", "stk"),
             b = mk("b", "bd"),
             p = mk("b", "sp");
-          b.style.height = Math.round((per[k].b / max) * chartH) + "px";
-          p.style.height = Math.round((per[k].s / max) * chartH) + "px";
+          b.style.height = Math.round((d.build / max) * chartH) + "px";
+          p.style.height = Math.round((d.stop / max) * chartH) + "px";
           s.appendChild(b);
           s.appendChild(p);
           c.appendChild(s);
@@ -723,47 +717,33 @@
             mk(
               "div",
               "dl",
-              days.slice(7)[idx].toLocaleDateString("en", { weekday: "short" }),
+              new Date(d.day + "T12:00:00").toLocaleDateString("en", {
+                weekday: "short",
+              }),
             ),
           );
           ch.appendChild(c);
         });
 
-        // brief, written by code from the numbers above
-        var top = dn2[0],
-          msg =
-            today >= GOAL
-              ? "Daily goal hit: " + today + " minutes built."
-              : today +
-                " of " +
-                GOAL +
-                " minutes built today. " +
-                (GOAL - today) +
-                " to go.";
+        // Brief, written by code from the numbers above
+        var msg =
+          today >= GOAL
+            ? "Daily goal hit: " + today + " minutes built."
+            : today +
+              " of " +
+              GOAL +
+              " minutes built today. " +
+              (GOAL - today) +
+              " to go.";
         if (streak > 1) msg += " " + streak + "-day streak.";
-        if (top)
+        if (stop[0])
           msg +=
-            " Biggest disruptor this week: " + top + " (" + dis[top] + "m).";
+            " Biggest disruptor in the last 7 days: " +
+            stop[0].subject +
+            " (" +
+            stop[0].minutes7d +
+            "m).";
         $("brief").textContent = msg;
-      }
-
-      async function load() {
-        var r = await sb
-          .from("habit_logs")
-          .select("subject,duration,habit_type,created_at")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: false })
-          .limit(1000);
-        logs = r.data || [];
-        var g = await sb
-          .from("lambert_goals")
-          .select("goal")
-          .eq("user_id", uid)
-          .eq("is_active", true)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        goalText = g.data && g.data[0] ? g.data[0].goal : "";
-        render();
       }
 
       async function signOut() {
@@ -781,16 +761,10 @@
       $("add").onclick = async function () {
         var sub = $("f-sub").value.replace(/[<>]/g, "").trim(),
           min = parseInt($("f-min").value, 10);
-        if (!sub || !min || min < 1) return;
-        if (!sb) {
-          logs.unshift({
-            subject: sub,
-            habit_type: $("f-type").value,
-            duration: min,
-            created_at: new Date().toISOString(),
-          });
-          render();
-        } else {
+        if (!sub || !min || min < 1 || min > 1440) return;
+        var btn = $("add");
+        btn.disabled = true;
+        try {
           var r = await sb.from("habit_logs").insert([
             {
               user_id: uid,
@@ -799,20 +773,25 @@
               habit_type: $("f-type").value,
             },
           ]);
-          if (r.error) return alert(r.error.message);
-          await load();
+          if (r.error) {
+            notice("Couldn’t save that log: " + r.error.message);
+            return;
+          }
+          $("f-sub").value = "";
+          $("f-min").value = "";
+          await loadState();
+        } catch (e) {
+          notice("Couldn’t save that log: " + e.message);
+        } finally {
+          btn.disabled = false;
         }
-        $("f-sub").value = "";
-        $("f-min").value = "";
       };
 
       (async function () {
-        if (!C.SUPABASE_URL || !C.SUPABASE_ANON_KEY) {
-          $("demo").style.display = "block";
-          logs = demoData();
-          goalText = "Finish the Evueo MVP";
+        if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY) {
           $("app").hidden = false;
-          return render();
+          notice("This site isn’t connected to its database yet.");
+          return;
         }
         sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
         var s = (await sb.auth.getSession()).data.session;
@@ -821,17 +800,12 @@
           return;
         }
         uid = s.user.id;
-        var a = await sb
-          .from("user_access")
-          .select("status,is_admin")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if (!a.data || (a.data.status !== "approved" && !a.data.is_admin)) {
-          $("wait").hidden = false;
-          return;
+        try {
+          await loadState();
+        } catch (e) {
+          $("app").hidden = false;
+          notice(e.message);
         }
-        $("app").hidden = false;
-        await load();
       })();
     </script>
   </body>
