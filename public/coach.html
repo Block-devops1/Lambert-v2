@@ -4,9 +4,19 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <title>Coach — Lambert</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href="/icons/favicon-32.png"
+      sizes="32x32"
+      type="image/png"
+    />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#070b16" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
       rel="stylesheet"
@@ -30,6 +40,8 @@
       html,
       body {
         height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
       }
       body {
         background: var(--bg);
@@ -38,9 +50,11 @@
         line-height: 1.5;
         display: flex;
         flex-direction: column;
-        height: 100dvh;
+        height: var(--vh, 100dvh);
+        padding-top: env(safe-area-inset-top, 0px);
       }
       .top {
+        flex: none;
         max-width: 760px;
         width: 100%;
         margin: 0 auto;
@@ -75,9 +89,11 @@
         color: var(--amber);
       }
       #feed {
-        flex: 1;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
       }
       .feed-in {
         max-width: 760px;
@@ -191,19 +207,6 @@
       .dots i:nth-child(3) {
         animation-delay: 0.3s;
       }
-      @keyframes chip-pop {
-        from {
-          opacity: 0;
-          transform: scale(0.6);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
-      }
-      .foot .chip {
-        animation: chip-pop 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
-      }
       @keyframes blink {
         0%,
         80%,
@@ -228,6 +231,7 @@
         animation: rise 0.18s ease-out;
       }
       .comp {
+        flex: none;
         border-top: 1px solid var(--line);
         background: var(--bg);
         padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
@@ -279,8 +283,7 @@
         padding: 20px;
       }
       @media (prefers-reduced-motion: reduce) {
-        .msg,
-        .foot .chip {
+        .msg {
           animation: none;
         }
         .dots i {
@@ -308,7 +311,7 @@
           rows="1"
           maxlength="2000"
           placeholder="Talk to Lambert…"
-          enterkeyhint="send"
+          enterkeyhint="enter"
         ></textarea>
         <button class="send" id="send" type="button">Send</button>
       </div>
@@ -319,6 +322,9 @@
     <script src="/coach-lib.js"></script>
     <script src="/nav.js"></script>
     <script>
+      var TOUCH = !!(
+        window.matchMedia && matchMedia("(pointer: coarse)").matches
+      );
       var C = window.LAMBERT || {},
         L = window.CoachLib,
         sb = null,
@@ -415,7 +421,7 @@
         busy = v;
         $("send").disabled = v;
         $("in").disabled = v;
-        if (!v) $("in").focus();
+        if (!v && !TOUCH) $("in").focus();
       }
       function resize() {
         var t = $("in");
@@ -446,7 +452,7 @@
             .order("created_at", { ascending: true }),
           sb
             .from("lambert_conversations")
-            .select("role,content")
+            .select("role,content,model")
             .eq("user_id", uid)
             .order("created_at", { ascending: false })
             .limit(20),
@@ -458,6 +464,14 @@
             .order("created_at", { ascending: false })
             .limit(1),
         ]);
+        // The model column may not exist yet; never lose the chat history because of it.
+        if (q[3].error)
+          q[3] = await sb
+            .from("lambert_conversations")
+            .select("role,content")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(20);
         if (q[0].error)
           banner(
             "Couldn’t load your logs, so Lambert is working without them: " +
@@ -469,6 +483,21 @@
         chatHistory = (q[3].data || []).slice().reverse();
         weeklyChallenge =
           q[4].data && q[4].data[0] ? q[4].data[0].challenge : null;
+      }
+
+      async function saveConvo(rows) {
+        var r = await sb.from("lambert_conversations").insert(rows);
+        if (r.error) {
+          // model column missing: save without it rather than lose the chat
+          r = await sb.from("lambert_conversations").insert(
+            rows.map(function (x) {
+              var y = Object.assign({}, x);
+              delete y.model;
+              return y;
+            }),
+          );
+        }
+        if (r.error) console.warn("Could not save the conversation", r.error);
       }
 
       async function applyTags(foot, tags) {
@@ -598,18 +627,19 @@
           if (isAdmin && data.model)
             foot.appendChild(mk("span", "model", data.model));
 
-          await sb.from("lambert_conversations").insert([
+          await saveConvo([
             { user_id: uid, role: "user", content: text, created_at: sentAt },
             {
               user_id: uid,
               role: "assistant",
               content: shown,
               created_at: new Date().toISOString(),
+              model: data.model || null,
             },
           ]);
           chatHistory.push(
             { role: "user", content: text },
-            { role: "assistant", content: shown },
+            { role: "assistant", content: shown, model: data.model || null },
           );
 
           await applyTags(foot, parsed.tags);
@@ -634,11 +664,29 @@
       };
       $("in").addEventListener("input", resize);
       $("in").addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        // Phones: Enter is a new line and the Send button sends. Keyboards: Enter sends, Shift+Enter is a new line.
+        if (!TOUCH && e.key === "Enter" && !e.shiftKey && !e.isComposing) {
           e.preventDefault();
           send($("in").value);
         }
       });
+
+      (function () {
+        var vv = window.visualViewport;
+        if (!vv) return;
+        function fit() {
+          document.documentElement.style.setProperty("--vh", vv.height + "px");
+          window.scrollTo(0, 0);
+        }
+        vv.addEventListener("resize", function () {
+          var f = $("feed"),
+            near = f.scrollHeight - f.scrollTop - f.clientHeight < 120;
+          fit();
+          if (near) toBottom();
+        });
+        vv.addEventListener("scroll", fit);
+        fit();
+      })();
 
       (async function () {
         if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY)
@@ -664,11 +712,13 @@
         $("gate").hidden = true;
         $("top").hidden = $("feed").hidden = $("comp").hidden = false;
         chatHistory.forEach(function (m) {
-          bubble(m.role, m.content);
+          var f = bubble(m.role, m.content);
+          if (isAdmin && m.role === "assistant" && m.model)
+            f.appendChild(mk("span", "model", m.model));
         });
         if (!chatHistory.length) showEmpty();
         toBottom();
-        $("in").focus();
+        if (!TOUCH) $("in").focus();
       })();
     </script>
   </body>
