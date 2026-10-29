@@ -28,7 +28,11 @@
     ".lnav-panel a,.lnav-out{display:block;width:100%;text-align:left;text-decoration:none;color:#e8edf7;font:600 .92rem Inter,system-ui,sans-serif;padding:12px 10px;border-radius:10px;border:0;background:none;cursor:pointer}" +
     ".lnav-panel a:hover,.lnav-out:hover{background:#16213a}" +
     ".lnav-panel a.on{background:rgba(245,158,11,.12);color:#f59e0b}" +
-    ".lnav-out{margin-top:auto;color:#8693ad;border-top:1px solid #1b2640;border-radius:0;padding-top:16px}";
+    ".lnav-out{margin-top:auto;color:#8693ad;border-top:1px solid #1b2640;border-radius:0;padding-top:16px}" +
+    // Links slide in one after another when the menu opens.
+    ".lnav-panel a{opacity:0;transform:translateX(-8px);transition:opacity .2s ease,transform .2s ease,background .15s}" +
+    ".lnav-panel.open a{opacity:1;transform:none;transition-delay:calc(var(--i,0)*45ms + 80ms),calc(var(--i,0)*45ms + 80ms),0s}" +
+    "@media (prefers-reduced-motion:reduce){.lnav-overlay,.lnav-panel,.lnav-panel a{transition:none!important}.lnav-panel a{opacity:1;transform:none}}";
 
   function el(tag, cls, txt) {
     var e = document.createElement(tag);
@@ -65,9 +69,10 @@
     var here = location.pathname.replace(/\/$/, "") || "/";
     var adminLinks = [];
     var first = null;
-    LINKS.forEach(function (l) {
+    LINKS.forEach(function (l, i) {
       var a = el("a", here === l.href ? "on" : "", l.label);
       a.href = l.href;
+      a.style.setProperty("--i", i);
       if (l.admin) {
         a.hidden = true;
         adminLinks.push(a);
@@ -103,9 +108,11 @@
         setOpen(false);
     });
 
-    // Read-only client: shares the page's stored session but never refreshes tokens.
-    var sb = null;
-    if (window.supabase && C.SUPABASE_URL && C.SUPABASE_ANON_KEY) {
+    // Reuse the page's own Supabase client when it has one: a second client on the
+    // same page triggers the "Multiple GoTrueClient instances" warning. Only if
+    // the page has none do we make a read-only one that never refreshes tokens.
+    var sb = window.sb && window.sb.auth ? window.sb : null;
+    if (!sb && window.supabase && C.SUPABASE_URL && C.SUPABASE_ANON_KEY) {
       sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, {
         auth: { autoRefreshToken: false },
       });

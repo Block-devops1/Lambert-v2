@@ -22,6 +22,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#070b16" />
+    <link rel="stylesheet" href="/motion.css" />
     <style>
       :root {
         --bg: #070b16;
@@ -246,14 +247,16 @@
       </nav>
 
       <section class="hero">
-        <div class="eyebrow">HABIT TRACKING WITHOUT THE FLATTERY</div>
-        <h1>A habit tracker that tells you the truth.</h1>
-        <p class="sub">
+        <div class="eyebrow enter">HABIT TRACKING WITHOUT THE FLATTERY</div>
+        <h1 class="enter" style="--d: 0.08s">
+          A habit tracker that tells you the truth.
+        </h1>
+        <p class="sub enter" style="--d: 0.16s">
           Log what you build and what drags you down. Lambert turns your minutes
           into streaks, weekly totals and a focus score, so a bad week can’t
           pass as a good one.
         </p>
-        <div class="cta">
+        <div class="cta enter" style="--d: 0.24s">
           <a class="btn pri" href="/login.html#signup">Get started</a>
           <a class="btn sec" href="/login.html">I already have an account</a>
         </div>
@@ -330,5 +333,49 @@
 
       <footer>Lambert</footer>
     </div>
+
+    <script src="/motion.js"></script>
+    <script>
+      // Motion is cosmetic. If motion.js is missing, everything still works.
+      window.Motion = window.Motion || {};
+      Motion.reveal = Motion.reveal || function () {};
+      Motion.num =
+        Motion.num ||
+        function (el, to, fmt) {
+          el.innerHTML = (fmt || String)(to);
+        };
+
+      // The sample numbers count up when they scroll into view.
+      var SAMPLE = [
+        [
+          112,
+          function (n) {
+            return n + "<small> / 180m</small>";
+          },
+        ],
+        [6, String],
+        [
+          640,
+          function (n) {
+            return n + "<small>m</small>";
+          },
+        ],
+      ];
+      [].forEach.call(
+        document.querySelectorAll(".preview .big"),
+        function (el, i) {
+          el._go = function () {
+            Motion.num(el, SAMPLE[i][0], SAMPLE[i][1]);
+          };
+        },
+      );
+      Motion.reveal(
+        ".preview .card, .feat .card, .step, .final, .wrap > section:not(.final) > h2",
+        function (el) {
+          var big = el.querySelector(".big");
+          if (big && big._go) big._go();
+        },
+      );
+    </script>
   </body>
 </html>
