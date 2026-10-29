@@ -1,0 +1,102 @@
+/* Dashboard motion. Transform and opacity only, except the ring (one small SVG stroke). */
+@keyframes m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes m-growx {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes m-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-tick {
+  from {
+    opacity: 0.35;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.09);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+#ring {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tick {
+  animation: m-tick 0.3s ease-out;
+}
+.pulse {
+  animation: m-pulse 0.6s ease-out;
+}
+
+/* First load only: the page builds itself once. */
+.intro .card {
+  animation: m-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--c, 0) * 55ms);
+}
+.intro .row,
+.intro .rk {
+  animation: m-rise 0.4s ease-out both;
+  animation-delay: calc(300ms + var(--r, 0) * 60ms);
+}
+.intro .dots i.h {
+  animation: m-pop 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation-delay: calc(450ms + var(--r, 0) * 45ms);
+}
+.intro .stk {
+  transform-origin: bottom;
+  animation: m-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(350ms + var(--r, 0) * 60ms);
+}
+.intro .bar i {
+  transform-origin: left;
+  animation: m-growx 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(400ms + var(--r, 0) * 60ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

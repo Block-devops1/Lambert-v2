@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#070b16" />
+    <link rel="stylesheet" href="/motion.css" />
     <style>
       :root {
         --bg: #070b16;
@@ -504,6 +505,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="/api/config"></script>
+    <script src="/motion.js"></script>
+    <script>
+      // Motion is cosmetic. If motion.js failed to load, draw values without animation.
+      window.Motion = window.Motion || {
+        num: function (el, to, fmt) {
+          el.innerHTML = (fmt || String)(to);
+        },
+        ring: function (el, frac, circ) {
+          el.style.strokeDashoffset =
+            circ * (1 - Math.min(1, Math.max(0, frac)));
+        },
+        done: function () {},
+      };
+    </script>
     <script src="/nav.js"></script>
     <script>
       var C = window.LAMBERT || {},
@@ -573,13 +588,16 @@
           today = sm.todayBuild,
           streak = st.overall.buildStreakDays;
 
-        $("k-today").innerHTML = today + "<small> / " + GOAL + "m</small>";
-        $("ring").style.strokeDashoffset =
-          163.4 * (1 - Math.min(1, today / GOAL));
+        Motion.num($("k-today"), today, function (n) {
+          return n + "<small> / " + GOAL + "m</small>";
+        });
+        Motion.ring($("ring"), today / GOAL, 163.4);
         $("k-today-n").textContent =
           today >= GOAL ? "Goal reached" : GOAL - today + "m to go";
-        $("k-streak").textContent = streak;
-        $("k-week").innerHTML = sm.last7Build + "<small>m</small>";
+        Motion.num($("k-streak"), streak);
+        Motion.num($("k-week"), sm.last7Build, function (n) {
+          return n + "<small>m</small>";
+        });
         var wn = $("k-week-n");
         if (!sm.prev7Build) {
           wn.textContent = "No data in the 7 days before";
@@ -594,8 +612,11 @@
             "% vs the 7 days before";
           wn.className = "note " + (delta >= 0 ? "up" : "dn");
         }
-        $("k-eff").innerHTML =
-          sm.focusScore == null ? "—" : sm.focusScore + "<small>%</small>";
+        if (sm.focusScore == null) $("k-eff").textContent = "—";
+        else
+          Motion.num($("k-eff"), sm.focusScore, function (n) {
+            return n + "<small>%</small>";
+          });
 
         // Habits: status comes from the engine, and only exists where a target is set.
         var hl = $("habits");
@@ -619,7 +640,7 @@
           var r = mk("div", "row"),
             l = mk("div"),
             dots = mk("div", "dots");
-          l.appendChild(mk("div", "nm", h.subject));
+          l.appendChild(mk("div", "nm", h.label));
           l.appendChild(
             mk(
               "div",
@@ -664,7 +685,7 @@
           );
         stop.forEach(function (h) {
           var r = mk("div", "rk");
-          r.appendChild(mk("span", "", h.subject));
+          r.appendChild(mk("span", "", h.label));
           r.appendChild(mk("span", "mono dn", h.minutes7d + "m"));
           dl.appendChild(r);
           var b = mk("div", "bar"),
@@ -739,11 +760,12 @@
         if (stop[0])
           msg +=
             " Biggest disruptor in the last 7 days: " +
-            stop[0].subject +
+            stop[0].label +
             " (" +
             stop[0].minutes7d +
             "m).";
         $("brief").textContent = msg;
+        Motion.done();
       }
 
       async function signOut() {
