@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#070b16" />
+    <link rel="stylesheet" href="/motion.css" />
     <style>
       :root {
         --bg: #070b16;
@@ -106,6 +107,7 @@
         box-shadow: 0 0 0 1px var(--amber);
       }
       .tabs b {
+        display: inline-block;
         font-family: "JetBrains Mono", monospace;
         margin-left: 6px;
         color: var(--amber);
@@ -202,6 +204,10 @@
         border-radius: 10px;
         display: none;
       }
+      .msg.err,
+      .msg.ok {
+        animation: m-rise 0.25s ease-out;
+      }
       .msg.err {
         display: block;
         background: rgba(239, 68, 68, 0.12);
@@ -242,13 +248,24 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="/api/config"></script>
+    <script src="/motion.js"></script>
+    <script>
+      // Motion is cosmetic. If motion.js is missing, everything still works.
+      window.Motion = window.Motion || {};
+      Motion.collapse =
+        Motion.collapse ||
+        function (el, done) {
+          done();
+        };
+    </script>
     <script src="/nav.js"></script>
     <script>
       var C = window.LAMBERT || {},
         sb = null,
         me = null,
         rows = [],
-        filter = "pending";
+        filter = "pending",
+        lastCounts = {};
       var $ = function (id) {
         return document.getElementById(id);
       };
@@ -261,6 +278,8 @@
       function say(text, kind) {
         var m = $("msg");
         m.textContent = text || "";
+        m.className = "msg";
+        void m.offsetWidth; // restart the slide-in even if the same message repeats
         m.className = "msg" + (text ? " " + kind : "");
       }
       function gate(text) {
@@ -290,7 +309,13 @@
         TABS.forEach(function (t) {
           var b = mk("button", filter === t[0] ? "on" : "", t[1]);
           b.type = "button";
-          b.appendChild(mk("b", "", String(count(t[0]))));
+          var n = count(t[0]),
+            cb = mk("b", "", String(n));
+          // A count that changed ticks once; the first draw stays still.
+          if (lastCounts[t[0]] != null && lastCounts[t[0]] !== n)
+            cb.classList.add("tick");
+          lastCounts[t[0]] = n;
+          b.appendChild(cb);
           b.onclick = function () {
             filter = t[0];
             render();
@@ -363,6 +388,7 @@
             !confirm("Block " + (r.email || "this user") + "?")
           )
             return;
+          var rowEl = b.closest(".row");
           b.disabled = true;
           say("");
           var res = await sb
@@ -382,7 +408,10 @@
             );
           }
           r.status = status;
-          render();
+          // A row that no longer belongs in this tab shrinks away instead of vanishing.
+          if (filter !== "all" && r.status !== filter && rowEl)
+            Motion.collapse(rowEl, render);
+          else render();
           say(
             (r.email || "User") +
               " is now " +
