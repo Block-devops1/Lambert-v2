@@ -92,6 +92,50 @@
   animation-delay: calc(400ms + var(--r, 0) * 60ms);
 }
 
+@keyframes m-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Pages and cards that ease in once on load */
+.enter {
+  animation: m-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0s);
+}
+/* Text that crossfades when it changes */
+.m-swap {
+  transition:
+    opacity 0.12s,
+    transform 0.12s;
+}
+.m-swap.m-out {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+/* Leaving the page */
+.m-leaving .enter {
+  animation: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.18s ease-in,
+    transform 0.18s ease-in;
+}
+
+/* Scroll reveal */
+.m-armed {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: calc(var(--r, 0) * 70ms);
+}
+.m-armed.m-seen {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

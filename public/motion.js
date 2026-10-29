@@ -120,5 +120,86 @@
     first = false;
   }
 
-  window.Motion = { num: num, ring: ring, done: done };
+  // Crossfade an element's text (used for headings that change with a tab).
+  function swap(el, text) {
+    clearTimeout(el._sw);
+    if (reduce || el.textContent === text) {
+      el.textContent = text;
+      return;
+    }
+    el.classList.add("m-out");
+    el._sw = setTimeout(function () {
+      el.textContent = text;
+      el.classList.remove("m-out");
+    }, 120);
+  }
+
+  // Fade the page out, then go to url. Without motion it just goes.
+  function leave(url) {
+    if (reduce) {
+      location.href = url;
+      return;
+    }
+    document.body.classList.add("m-leaving");
+    setTimeout(function () {
+      location.href = url;
+    }, 180);
+  }
+  // Coming back with the Back button must not show a half-faded page.
+  window.addEventListener("pageshow", function () {
+    document.body.classList.remove("m-leaving");
+  });
+
+  // Ease elements in as they scroll into view (staggered within each group).
+  // Elements are only hidden once this has started watching them, so if it
+  // cannot run, the content simply stays visible. fn(el) runs when one appears.
+  function reveal(sel, fn) {
+    if (reduce || !window.IntersectionObserver) return;
+    var io = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          e.target.classList.add("m-seen");
+          if (fn) fn(e.target);
+        });
+      },
+      { threshold: 0.15 },
+    );
+    var seen = new Map();
+    [].forEach.call(document.querySelectorAll(sel), function (el) {
+      var n = seen.get(el.parentNode) || 0;
+      seen.set(el.parentNode, n + 1);
+      el.style.setProperty("--r", n);
+      el.classList.add("m-armed");
+      io.observe(el);
+    });
+  }
+
+  // Shrink an element away (height, padding, fade), then call done().
+  function collapse(el, done) {
+    if (reduce) {
+      done();
+      return;
+    }
+    el.style.overflow = "hidden";
+    el.style.height = el.offsetHeight + "px";
+    el.style.transition =
+      "height .25s ease, padding .25s ease, opacity .2s ease";
+    void el.offsetHeight;
+    el.style.height = "0";
+    el.style.paddingTop = el.style.paddingBottom = "0";
+    el.style.opacity = "0";
+    setTimeout(done, 270);
+  }
+
+  window.Motion = {
+    num: num,
+    ring: ring,
+    done: done,
+    swap: swap,
+    leave: leave,
+    reveal: reveal,
+    collapse: collapse,
+  };
 })();

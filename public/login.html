@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#070b16" />
+    <link rel="stylesheet" href="/motion.css" />
     <style>
       :root {
         --bg: #070b16;
@@ -89,6 +90,9 @@
         margin-bottom: 20px;
       }
       .tabs button {
+        transition:
+          background 0.15s,
+          color 0.15s;
         border: 0;
         background: none;
         color: var(--muted);
@@ -128,6 +132,7 @@
         outline-offset: 0;
       }
       .go {
+        position: relative;
         width: 100%;
         margin-top: 20px;
         padding: 14px;
@@ -144,12 +149,40 @@
         opacity: 0.6;
         cursor: wait;
       }
+      /* Loading: the label gives way to a small spinner. */
+      .go.busy {
+        color: transparent;
+      }
+      .go.busy::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(26, 16, 0, 0.25);
+        border-top-color: #1a1000;
+        border-radius: 50%;
+        animation: m-spin 0.7s linear infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .go.busy {
+          color: #1a1000;
+        }
+        .go.busy::after {
+          display: none;
+        }
+      }
       .msg {
         margin-top: 14px;
         font-size: 0.84rem;
         padding: 11px 13px;
         border-radius: 10px;
         display: none;
+      }
+      .msg.err,
+      .msg.ok {
+        animation: m-rise 0.25s ease-out;
       }
       .msg.err {
         display: block;
@@ -171,17 +204,35 @@
         color: var(--muted);
         text-decoration: none;
       }
-      .hide {
-        display: none;
+      /* The confirm-password field slides open for Sign up. */
+      .collapse {
+        display: grid;
+        grid-template-rows: 0fr;
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          grid-template-rows 0.25s ease,
+          opacity 0.2s ease,
+          visibility 0s 0.25s;
+      }
+      .collapse.open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 0s;
+      }
+      .collapse-in {
+        overflow: hidden;
+        min-height: 0;
       }
     </style>
   </head>
   <body>
-    <div class="box">
+    <div class="box enter">
       <a class="logo" href="/">LAMBERT<span>.</span></a>
       <div class="card">
-        <h1 id="title">Welcome back</h1>
-        <p class="sub" id="sub">Log in to see today’s numbers.</p>
+        <h1 id="title" class="m-swap">Welcome back</h1>
+        <p class="sub m-swap" id="sub">Log in to see today’s numbers.</p>
         <div class="tabs">
           <button type="button" id="t-in" class="on">Log in</button>
           <button type="button" id="t-up">Sign up</button>
@@ -201,14 +252,16 @@
             autocomplete="current-password"
             placeholder="At least 8 characters"
           />
-          <div id="pw2-wrap" class="hide">
-            <label for="pw2">Confirm password</label>
-            <input
-              id="pw2"
-              type="password"
-              autocomplete="new-password"
-              placeholder="Repeat your password"
-            />
+          <div id="pw2-wrap" class="collapse">
+            <div class="collapse-in">
+              <label for="pw2">Confirm password</label>
+              <input
+                id="pw2"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Repeat your password"
+              />
+            </div>
           </div>
           <button class="go" id="go" type="submit">Log in</button>
           <div class="msg" id="msg" role="alert"></div>
@@ -219,6 +272,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="/api/config"></script>
+    <script src="/motion.js"></script>
+    <script>
+      // Motion is cosmetic. If motion.js is missing, everything still works.
+      window.Motion = window.Motion || {};
+      Motion.swap =
+        Motion.swap ||
+        function (el, t) {
+          el.textContent = t;
+        };
+      Motion.leave =
+        Motion.leave ||
+        function (u) {
+          location.href = u;
+        };
+    </script>
     <script>
       var C = window.LAMBERT || {},
         sb = null,
@@ -230,6 +298,8 @@
       function say(text, kind) {
         var m = $("msg");
         m.textContent = text || "";
+        m.className = "msg";
+        void m.offsetWidth; // restart the fade even if the same message repeats
         m.className = "msg" + (text ? " " + kind : "");
       }
 
@@ -238,12 +308,15 @@
         var up = m === "up";
         $("t-in").className = up ? "" : "on";
         $("t-up").className = up ? "on" : "";
-        $("title").textContent = up ? "Create your account" : "Welcome back";
-        $("sub").textContent = up
-          ? "New accounts wait for approval before they can log in to the dashboard."
-          : "Log in to see today’s numbers.";
+        Motion.swap($("title"), up ? "Create your account" : "Welcome back");
+        Motion.swap(
+          $("sub"),
+          up
+            ? "New accounts wait for approval before they can log in to the dashboard."
+            : "Log in to see today’s numbers.",
+        );
         $("go").textContent = up ? "Sign up" : "Log in";
-        $("pw2-wrap").className = up ? "" : "hide";
+        $("pw2-wrap").classList.toggle("open", up);
         $("pw").autocomplete = up ? "new-password" : "current-password";
         say("");
       }
@@ -280,7 +353,9 @@
         if (mode === "up" && pw !== $("pw2").value)
           return say("The two passwords don’t match.", "err");
 
+        var leaving = false;
         $("go").disabled = true;
+        $("go").classList.add("busy");
         say("");
         try {
           if (mode === "in") {
@@ -289,7 +364,8 @@
               password: pw,
             });
             if (r.error) return say(r.error.message, "err");
-            location.href = "/app.html";
+            leaving = true;
+            Motion.leave("/app.html");
           } else {
             var s = await sb.auth.signUp({ email: email, password: pw });
             if (s.error) return say(s.error.message, "err");
@@ -303,8 +379,10 @@
                 "err",
               );
             }
-            if (s.data.session) location.href = "/app.html";
-            else
+            if (s.data.session) {
+              leaving = true;
+              Motion.leave("/app.html");
+            } else
               say(
                 "Account created. Check your email to confirm it, then log in.",
                 "ok",
@@ -316,7 +394,10 @@
             "err",
           );
         } finally {
-          $("go").disabled = false;
+          if (!leaving) {
+            $("go").disabled = false;
+            $("go").classList.remove("busy");
+          }
         }
       };
     </script>
