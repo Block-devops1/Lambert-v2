@@ -11,16 +11,6 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
-    <link
-      rel="icon"
-      href="/icons/favicon-32.png"
-      sizes="32x32"
-      type="image/png"
-    />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#070b16" />
     <style>
       :root {
         --bg: #070b16;
@@ -321,7 +311,11 @@
         uid = null,
         isAdmin = false,
         busy = false;
-      var chatHistory = [];
+      var logs = [],
+        goals = [],
+        memories = [],
+        chatHistory = [],
+        weeklyChallenge = null;
       var $ = function (id) {
         return document.getElementById(id);
       };
@@ -416,17 +410,51 @@
       }
 
       async function load() {
-        // The server reads logs, goals, memories and the challenge itself.
-        // The browser only needs earlier messages to draw the conversation.
-        var q = await sb
-          .from("lambert_conversations")
-          .select("role,content")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: false })
-          .limit(20);
-        if (q.error)
-          banner("Couldn’t load your earlier messages: " + q.error.message);
-        chatHistory = (q.data || []).slice().reverse();
+        var q = await Promise.all([
+          sb
+            .from("habit_logs")
+            .select(
+              "subject,duration,habit_type,description,reason_category,created_at",
+            )
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(1000),
+          sb
+            .from("lambert_goals")
+            .select("goal")
+            .eq("user_id", uid)
+            .eq("is_active", true)
+            .order("created_at", { ascending: false }),
+          sb
+            .from("lambert_memories")
+            .select("memory")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: true }),
+          sb
+            .from("lambert_conversations")
+            .select("role,content")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          sb
+            .from("lambert_challenges")
+            .select("challenge")
+            .eq("user_id", uid)
+            .eq("week_start", L.weekStartKey(new Date()))
+            .order("created_at", { ascending: false })
+            .limit(1),
+        ]);
+        if (q[0].error)
+          banner(
+            "Couldn’t load your logs, so Lambert is working without them: " +
+              q[0].error.message,
+          );
+        logs = q[0].data || [];
+        goals = q[1].data || [];
+        memories = q[2].data || [];
+        chatHistory = (q[3].data || []).slice().reverse();
+        weeklyChallenge =
+          q[4].data && q[4].data[0] ? q[4].data[0].challenge : null;
       }
 
       async function applyTags(foot, tags) {
@@ -439,12 +467,14 @@
                 .from("lambert_goals")
                 .insert([{ user_id: uid, goal: t.value }]);
               if (r.error) throw r.error;
+              goals.unshift({ goal: t.value });
               chip(foot, "Goal saved");
             } else if (t.kind === "REMEMBER") {
               r = await sb
                 .from("lambert_memories")
                 .insert([{ user_id: uid, memory: t.value }]);
               if (r.error) throw r.error;
+              memories.push({ memory: t.value });
               chip(foot, "Remembered");
             } else if (t.kind === "CHALLENGE") {
               var ws = L.weekStartKey(new Date());
@@ -466,6 +496,7 @@
                     { user_id: uid, challenge: t.value, week_start: ws },
                   ]);
               if (r.error) throw r.error;
+              weeklyChallenge = t.value;
               chip(foot, "Weekly challenge set");
             }
           } catch (e) {
@@ -483,6 +514,14 @@
             var row = L.missRow(a, uid, new Date().toISOString());
             var r = await sb.from("habit_logs").insert([row]);
             if (r.error) throw r.error;
+            logs.unshift({
+              subject: row.subject,
+              duration: 0,
+              habit_type: row.habit_type,
+              description: row.description,
+              reason_category: row.reason_category,
+              created_at: row.created_at,
+            });
             chip(
               foot,
               "Miss recorded: " + a.subject + " (" + L.label(a.category) + ")",
@@ -499,7 +538,7 @@
         if (busy || !text) return;
         setBusy(true);
         var sentAt = new Date().toISOString();
-        var mine = bubble("user", text).parentNode;
+        bubble("user", text);
         $("in").value = "";
         resize();
         var wait = typing();
@@ -515,19 +554,19 @@
               "Content-Type": "application/json",
               Authorization: "Bearer " + sess.access_token,
             },
-            // Only the message: the server reads everything else itself.
-            body: JSON.stringify({ message: text }),
+            body: JSON.stringify({
+              message: text,
+              history: chatHistory.slice(-20),
+              goals: goals,
+              memories: memories,
+              weeklyChallenge: weeklyChallenge,
+            }),
           });
           var data = await res.json().catch(function () {
             return {};
           });
           wait.remove();
-          if (res.status === 401) {
-            location.replace("/login.html");
-            return;
-          }
           if (!res.ok || !data.reply) {
-            mine.remove(); // the text goes back in the box, so don't show it twice
             bubble(
               "assistant",
               data.reply ||
@@ -545,7 +584,7 @@
           if (isAdmin && data.model)
             foot.appendChild(mk("span", "model", data.model));
 
-          var saved = await sb.from("lambert_conversations").insert([
+          await sb.from("lambert_conversations").insert([
             { user_id: uid, role: "user", content: text, created_at: sentAt },
             {
               user_id: uid,
@@ -554,11 +593,6 @@
               created_at: new Date().toISOString(),
             },
           ]);
-          if (saved.error)
-            banner(
-              "Couldn’t save this chat, so Lambert may not remember it: " +
-                saved.error.message,
-            );
           chatHistory.push(
             { role: "user", content: text },
             { role: "assistant", content: shown },
@@ -569,7 +603,6 @@
           toBottom();
         } catch (e) {
           if (wait.parentNode) wait.remove();
-          mine.remove();
           bubble(
             "assistant",
             "Couldn’t reach Lambert. Check your connection and try again.",

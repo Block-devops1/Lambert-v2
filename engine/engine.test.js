@@ -502,3 +502,171 @@ test("a stop habit given a streak, or a build habit without one, fails validatio
   assert.ok(errs.some((e) => e.includes("stop habit must not have a streak")));
   assert.ok(errs.some((e) => e.includes("build habit has no streak")));
 });
+
+// ---------- habit_type spellings ----------
+
+test("legacy 'build' habit_type counts as a build habit, same as 'continue'", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [
+      row("2026-10-26", "coding", 60, { habit_type: "build" }),
+      row("2026-10-26", "reading", 30, { habit_type: "continue" }),
+    ],
+  });
+  assert.deepEqual(
+    state.habits.map((h) => h.direction),
+    ["build", "build"],
+  );
+  assert.equal(state.overall.buildStreakDays, 1);
+  assert.deepEqual(E.validateState(state), []);
+});
+
+test("any other habit_type is a stop habit", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [row("2026-10-26", "tiktok", 40, { habit_type: "quit" })],
+  });
+  assert.equal(state.habits[0].direction, "stop");
+});
+
+// ---------- daily series, summary, 7-day habit fields, targets sanitizer ----------
+
+test("daily has 14 days, oldest first, build and stop split", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [
+      row("2026-10-27", "workout", 45),
+      row("2026-10-27", "reading", 15),
+      stopRow("2026-10-27", "gaming", 20),
+      row("2026-10-14", "reading", 30),
+    ],
+  });
+  assert.equal(state.daily.length, 14);
+  assert.equal(state.daily[0].day, "2026-10-14");
+  assert.equal(state.daily[13].day, "2026-10-27");
+  assert.deepEqual(state.daily[13], { day: "2026-10-27", build: 60, stop: 20 });
+  assert.equal(state.daily[0].build, 30);
+});
+
+test("summary: today, rolling 7-day totals, previous 7 days, focus score", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [
+      row("2026-10-27", "workout", 60),
+      row("2026-10-25", "reading", 40),
+      stopRow("2026-10-26", "gaming", 20),
+      row("2026-10-20", "reading", 50), // previous 7 (Oct 14-20)
+    ],
+  });
+  const s = state.summary;
+  assert.equal(s.todayBuild, 60);
+  assert.equal(s.last7Build, 100);
+  assert.equal(s.last7Stop, 20);
+  assert.equal(s.prev7Build, 50);
+  assert.equal(s.avgBuildPerDay, 14);
+  assert.equal(s.focusScore, 83);
+  assert.deepEqual(E.validateState(state), []);
+});
+
+test("focus score is null with no logs, and pace follows the daily goal", () => {
+  assert.equal(
+    E.buildState({ today: TODAY, logs: [] }).summary.focusScore,
+    null,
+  );
+  const mk = (min, goal) =>
+    E.buildState({
+      today: TODAY,
+      dailyGoalMin: goal,
+      logs: [row("2026-10-27", "x", min)],
+    }).summary.paceStatus;
+  assert.equal(mk(700, 100), "on_track"); // 100/day vs 100
+  assert.equal(mk(420, 100), "adjust"); // 60/day vs 100
+  assert.equal(mk(70, 100), "off_track"); // 10/day vs 100
+});
+
+test("an invalid dailyGoalMin falls back to 180", () => {
+  assert.equal(
+    E.buildState({ today: TODAY, logs: [], dailyGoalMin: 5 }).summary
+      .dailyGoalMin,
+    180,
+  );
+  assert.equal(
+    E.buildState({ today: TODAY, logs: [], dailyGoalMin: "x" }).summary
+      .dailyGoalMin,
+    180,
+  );
+  assert.equal(
+    E.buildState({ today: TODAY, logs: [], dailyGoalMin: 240 }).summary
+      .dailyGoalMin,
+    240,
+  );
+});
+
+test("each habit reports 7-day minutes, active days, and a dot per day", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [
+      row("2026-10-27", "coding", 100),
+      row("2026-10-25", "coding", 69),
+      row("2026-10-19", "coding", 40),
+    ],
+  });
+  const h = state.habits[0];
+  assert.equal(h.minutes7d, 169);
+  assert.equal(h.days7d, 2);
+  assert.equal(h.last7Days.length, 7);
+  assert.deepEqual(h.last7Days, [
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+  ]);
+  assert.equal(h.minutes14d, 209);
+});
+
+test("sanitizeTargets keeps only valid subject -> daysPerWeek entries", () => {
+  const t = E.sanitizeTargets({
+    "Bible Reading": { daysPerWeek: 7 },
+    workout: { daysPerWeek: 4 },
+    zero: { daysPerWeek: 0 },
+    big: { daysPerWeek: 9 },
+    frac: { daysPerWeek: 2.5 },
+    str: { daysPerWeek: "3" },
+    nul: null,
+    "": { daysPerWeek: 3 },
+  });
+  assert.deepEqual(t, {
+    "bible reading": { daysPerWeek: 7 },
+    workout: { daysPerWeek: 4 },
+  });
+  assert.deepEqual(E.sanitizeTargets(null), {});
+  assert.deepEqual(E.sanitizeTargets([1, 2]), {});
+  assert.deepEqual(E.sanitizeTargets("x"), {});
+});
+
+test("habits keep the user's capitalisation as a display label", () => {
+  const state = E.buildState({
+    today: TODAY,
+    logs: [
+      row("2026-10-25", "Bible Reading", 10),
+      row("2026-10-26", "bible reading ", 10),
+    ],
+  });
+  assert.equal(state.habits.length, 1);
+  assert.equal(state.habits[0].subject, "bible reading");
+  assert.equal(state.habits[0].label, "bible reading"); // newest log's spelling wins
+  const only = E.buildState({
+    today: TODAY,
+    logs: [row("2026-10-26", "Coding", 30)],
+  });
+  assert.equal(only.habits[0].label, "Coding");
+  const target = E.buildState({
+    today: TODAY,
+    logs: [],
+    targets: { Workout: { daysPerWeek: 3 } },
+  });
+  assert.equal(target.habits[0].label, "workout");
+});

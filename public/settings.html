@@ -283,7 +283,7 @@
         habits.forEach(function (h) {
           var row = mk("div", "row"),
             left = mk("div");
-          left.appendChild(mk("div", "nm", h.subject));
+          left.appendChild(mk("div", "nm", h.label));
           left.appendChild(
             mk("div", "sm", h.minutes14d + "m in the last 14 days"),
           );

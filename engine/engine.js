@@ -4,7 +4,7 @@
 //   habit_logs(id, created_at, subject, duration, habit_type, user_id, description, reason_category)
 //   lambert_challenges(id, user_id, challenge, week_start, met, created_at)
 //
-// habit_type "continue" is a BUILD habit: minutes are good, and a streak is
+// habit_type "continue" (or the legacy "build") is a BUILD habit: minutes are good, and a streak is
 // consecutive days with minutes logged. Any other value is a STOP habit
 // (disruptor): minutes are time LOST, so there is no streak, only days since
 // it last happened.
@@ -13,7 +13,10 @@
 // otherwise a 11:30pm log lands on the wrong day and breaks streaks.
 const DEFAULT_TZ_OFFSET_MIN = 60;
 
-const BUILD_TYPE = "continue";
+// "continue" is the canonical value. "build" is accepted too, because the first
+// version of the dashboard's Build option saved that spelling; those rows exist.
+// Every other value is a stop habit.
+const BUILD_TYPES = ["continue", "build"];
 
 // Why a habit was missed. The user picks one; free text is kept alongside it.
 // Each category maps to a fix code. The engine never writes prose: the voice
@@ -88,7 +91,7 @@ function cleanLogs(
     const subject = normText(r.subject, aliases);
     if (!day || !subject) continue;
     const type = normText(r.habit_type) || "unknown";
-    const direction = type === BUILD_TYPE ? "build" : "stop";
+    const direction = BUILD_TYPES.includes(type) ? "build" : "stop";
     const minutes =
       Number.isFinite(r.duration) && r.duration > 0 ? r.duration : 0;
     if (direction === "stop" && minutes === 0) continue;
@@ -96,6 +99,7 @@ function cleanLogs(
       day,
       ts: new Date(r.created_at).getTime(),
       subject,
+      label: String(r.subject).trim(),
       minutes,
       type,
       direction,
@@ -182,6 +186,21 @@ function emergencyCount(logs, today, windowDays = 30) {
   ).length;
 }
 
+// Settings JSON comes from the browser, so treat it as untrusted: keep only
+// { subject: { daysPerWeek: 1..7 } } entries with sane subject names.
+function sanitizeTargets(raw, aliases = {}) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const k of Object.keys(raw)) {
+    const key = normText(k, aliases);
+    const d = raw[k] && raw[k].daysPerWeek;
+    if (key && key.length <= 60 && Number.isInteger(d) && d >= 1 && d <= 7) {
+      out[key] = { daysPerWeek: d };
+    }
+  }
+  return out;
+}
+
 // targets: { "bible reading": { daysPerWeek: 7 }, workout: { daysPerWeek: 4 } }
 // discontinued: subjects of stop habits the user has quit; they are dropped.
 // nowMs: used only for hoursSinceLastLog.
@@ -198,6 +217,7 @@ function buildState({
   localHour = null, // 0-23 in local time; null means "don't ask for reasons"
   cutoffHour = 21, // after this hour, unlogged habits need a reason
   emergencyCap = 2, // emergency misses allowed per 30 days
+  dailyGoalMin = 180, // minutes of build time per day the user aims for
 }) {
   if (!today) throw new Error("buildState requires today (YYYY-MM-DD, local)");
   const dropped = new Set(
@@ -210,6 +230,14 @@ function buildState({
   const lastWeekStart = shiftDay(weekStart, -7);
   const from14 = shiftDay(today, -13);
   const dayIndex = weekIndex(today);
+  const goalMin =
+    Number.isFinite(dailyGoalMin) && dailyGoalMin >= 15 && dailyGoalMin <= 1440
+      ? dailyGoalMin
+      : 180;
+  // Last 7 calendar days ending today, oldest first (rolling window used by the dashboard).
+  const last7Keys = Array.from({ length: 7 }, (_, i) =>
+    shiftDay(today, -(6 - i)),
+  );
 
   const tmap = {};
   for (const k of Object.keys(targets)) tmap[normText(k, aliases)] = targets[k];
@@ -233,20 +261,26 @@ function buildState({
     const inWeek = (r) => r.day >= weekStart && r.day <= today;
     const inLastWeek = (r) => r.day >= lastWeekStart && r.day < weekStart;
     const in14 = (r) => r.day >= from14 && r.day <= today;
+    const in7 = (r) => r.day >= last7Keys[0] && r.day <= today;
     const lastDay = [...doneDays].sort().pop() || null;
     const loggedToday = doneDays.has(today);
     const daysThisWeek = [...doneDays].filter(
       (d) => d >= weekStart && d <= today,
     ).length;
 
+    const newest = rows.reduce((m, r) => (!m || r.ts > m.ts ? r : m), null);
     const base = {
       subject,
+      label: newest ? newest.label : subject, // display name; subject is the normalised key
       type: rows[0] ? rows[0].type : "unknown",
       direction,
       loggedToday,
       minutesToday: sum((r) => r.day === today),
       minutesThisWeek: sum(inWeek),
       minutesLastWeek: sum(inLastWeek),
+      minutes7d: sum(in7),
+      days7d: last7Keys.filter((k) => doneDays.has(k)).length,
+      last7Days: last7Keys.map((k) => doneDays.has(k)),
       minutes14d: sum(in14),
       sessions14d: done.filter(in14).length,
       minutesAllTime: sum(() => true),
@@ -330,8 +364,43 @@ function buildState({
       text: l.text,
     }));
 
+  // Per-day minutes for the last 14 days, oldest first. The dashboard and the
+  // analytics page draw from this; they never re-add raw logs themselves.
+  const dailyMap = new Map();
+  for (let i = 13; i >= 0; i--) {
+    const d = shiftDay(today, -i);
+    dailyMap.set(d, { day: d, build: 0, stop: 0 });
+  }
+  for (const l of logs) {
+    const d = dailyMap.get(l.day);
+    if (d) d[l.direction === "build" ? "build" : "stop"] += l.minutes;
+  }
+  const daily = [...dailyMap.values()];
+  const addUp = (arr, k) => arr.reduce((a, d) => a + d[k], 0);
+  const last7 = daily.slice(7);
+  const prev7 = daily.slice(0, 7);
+  const last7Build = addUp(last7, "build");
+  const last7Stop = addUp(last7, "stop");
+  const ratio = last7Build / 7 / goalMin;
+  const summary = {
+    dailyGoalMin: goalMin,
+    todayBuild: daily[13].build,
+    last7Build,
+    last7Stop,
+    prev7Build: addUp(prev7, "build"),
+    avgBuildPerDay: Math.round(last7Build / 7),
+    focusScore:
+      last7Build + last7Stop
+        ? Math.round((last7Build / (last7Build + last7Stop)) * 100)
+        : null,
+    paceStatus:
+      ratio >= 0.8 ? "on_track" : ratio >= 0.5 ? "adjust" : "off_track",
+  };
+
   return {
     asOf: today,
+    daily,
+    summary,
     week: { start: weekStart, dayIndex, daysLeftAfterToday: 6 - dayIndex },
     overall: {
       buildStreakDays: streakFor(buildDays, today).current,
@@ -370,6 +439,9 @@ function validateState(state) {
     num(h.minutesToday, `${p}.minutesToday`);
     num(h.minutesThisWeek, `${p}.minutesThisWeek`);
     num(h.minutesLastWeek, `${p}.minutesLastWeek`);
+    num(h.minutes7d, `${p}.minutes7d`);
+    num(h.days7d, `${p}.days7d`);
+    if (h.days7d > 7) errors.push(`${p} days7d > 7`);
     num(h.minutes14d, `${p}.minutes14d`);
     num(h.sessions14d, `${p}.sessions14d`);
     num(h.minutesAllTime, `${p}.minutesAllTime`);
@@ -412,24 +484,25 @@ function validateState(state) {
   }
   if (state && state.overall)
     num(state.overall.buildStreakDays, "overall.buildStreakDays");
+  if (state && state.summary) {
+    for (const k of [
+      "todayBuild",
+      "last7Build",
+      "last7Stop",
+      "prev7Build",
+      "avgBuildPerDay",
+      "dailyGoalMin",
+    ]) {
+      num(state.summary[k], `summary.${k}`);
+    }
+  }
+  if (state && state.daily && state.daily.length !== 14)
+    errors.push("daily must have 14 days");
   return errors;
 }
 
-function sanitizeTargets(raw) {
-  const out = {};
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
-  for (const [subject, v] of Object.entries(raw)) {
-    const key = normText(subject);
-    const d = v ? Number(v.daysPerWeek) : NaN;
-    if (key && Number.isInteger(d) && d >= 1 && d <= 7) {
-      out[key] = { daysPerWeek: d };
-    }
-  }
-  return out;
-}
-
 module.exports = {
-  BUILD_TYPE,
+  BUILD_TYPES,
   dayKey,
   shiftDay,
   weekIndex,
@@ -443,7 +516,7 @@ module.exports = {
   emergencyCount,
   REASON_CATEGORIES,
   FIX_FOR,
+  sanitizeTargets,
   buildState,
   validateState,
-  sanitizeTargets,
 };
