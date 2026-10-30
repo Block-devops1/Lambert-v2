@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Analytics — Lambert</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href="/icons/favicon-32.png"
+      sizes="32x32"
+      type="image/png"
+    />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#070b16" />
+    <link rel="stylesheet" href="/motion.css" />
+    <link rel="stylesheet" href="/calendar.css" />
+    <style>
+      :root {
+        --bg: #070b16;
+        --card: #0f1729;
+        --line: #1b2640;
+        --text: #e8edf7;
+        --muted: #8693ad;
+        --amber: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        line-height: 1.5;
+        padding-bottom: 60px;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 0 18px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 0.8rem;
+      }
+      .logo span {
+        color: var(--amber);
+      }
+      .page {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+      }
+      .range {
+        display: flex;
+        gap: 6px;
+      }
+      .range button {
+        border: 1px solid var(--line);
+        background: none;
+        color: var(--muted);
+        font:
+          600 0.8rem Inter,
+          sans-serif;
+        padding: 8px 14px;
+        border-radius: 99px;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      .range button[aria-pressed="true"] {
+        background: var(--card);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--amber);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 14px;
+      }
+      .lab {
+        font-size: 0.68rem;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .brief {
+        border-left: 4px solid var(--amber);
+      }
+      #headline {
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+      .early {
+        font-size: 0.8rem;
+        color: var(--amber);
+        margin-top: 8px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .stat {
+        background: #0a1122;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .stat b {
+        display: block;
+        font:
+          700 1.3rem "JetBrains Mono",
+          monospace;
+      }
+      .stat small {
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+      .up {
+        color: var(--green);
+      }
+      .dn {
+        color: var(--red);
+      }
+      .chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        padding-top: 6px;
+        overflow-x: auto;
+      }
+      .ccol {
+        flex: 1;
+        min-width: 34px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .pair {
+        height: 150px;
+        width: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+        position: relative;
+      }
+      .b {
+        width: 36%;
+        max-width: 22px;
+        border-radius: 5px 5px 2px 2px;
+        transform-origin: bottom;
+        animation: m-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        animation-delay: calc(var(--i, 0) * 40ms);
+      }
+      .bd {
+        background: var(--green);
+      }
+      .sp {
+        background: var(--red);
+      }
+      .gm {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 2px dashed var(--amber);
+        opacity: 0.85;
+      }
+      .cl {
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-top: 6px;
+        white-space: nowrap;
+      }
+      .cn {
+        font:
+          600 0.68rem "JetBrains Mono",
+          monospace;
+        color: var(--green);
+        min-height: 1em;
+        white-space: nowrap;
+      }
+      .cn i {
+        color: #fca5a5;
+        font-style: normal;
+      }
+      .chart.dense .cn {
+        display: none;
+      }
+      .leg {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .leg span::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        background: var(--green);
+      }
+      .leg .r::before {
+        background: var(--red);
+      }
+      .leg .g::before {
+        background: none;
+        border-top: 2px dashed var(--amber);
+        border-radius: 0;
+        height: 0;
+        width: 14px;
+        vertical-align: 3px;
+      }
+      .hrow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .hrow:last-child {
+        border-bottom: 0;
+      }
+      .hnm {
+        font-weight: 600;
+      }
+      .hsub {
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+      .hr {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 30px;
+      }
+      .spark i {
+        width: 7px;
+        min-height: 3px;
+        border-radius: 2px;
+        background: #2a3550;
+      }
+      .spark i.now {
+        background: var(--green);
+      }
+      .chip {
+        font-size: 0.66rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .on {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--green);
+      }
+      .adj {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .off {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+      }
+      .nt {
+        background: rgba(134, 147, 173, 0.15);
+        color: var(--muted);
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .two .card {
+        margin-bottom: 0;
+      }
+      .rk {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.86rem;
+        margin-bottom: 5px;
+      }
+      .bar {
+        height: 6px;
+        background: var(--line);
+        border-radius: 3px;
+        margin-bottom: 13px;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--red);
+        transform-origin: left;
+        animation: m-growx 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      .bar.amb i {
+        background: var(--amber);
+      }
+      .wk {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        text-align: center;
+      }
+      .wk div {
+        background: #0a1122;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 0;
+        font:
+          600 0.85rem "JetBrains Mono",
+          monospace;
+      }
+      .wk small {
+        display: block;
+        font:
+          500 0.62rem Inter,
+          sans-serif;
+        color: var(--muted);
+      }
+      .wk .hi {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.86rem;
+        padding: 6px 0;
+      }
+      .acts {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--text);
+        font:
+          600 0.82rem Inter,
+          sans-serif;
+        padding: 11px 16px;
+        border-radius: 11px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--amber);
+      }
+      #act {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .msg {
+        display: none;
+        margin-bottom: 14px;
+        font-size: 0.84rem;
+        padding: 11px 13px;
+        border-radius: 10px;
+        background: rgba(239, 68, 68, 0.12);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .msg.show {
+        display: block;
+      }
+      .gate {
+        max-width: 420px;
+        margin: 20vh auto;
+        text-align: center;
+        color: var(--muted);
+      }
+      @media (max-width: 700px) {
+        .two {
+          grid-template-columns: 1fr;
+        }
+        .two .card + .card {
+          margin-top: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gate" id="gate">Loading…</div>
+    <div class="wrap" id="app" hidden>
+      <header>
+        <div class="logo">LAMBERT<span>.</span></div>
+        <div class="page">Analytics</div>
+      </header>
+      <div class="top">
+        <h1>Analytics</h1>
+        <div
+          class="range"
+          id="range"
+          role="group"
+          aria-label="Time range"
+        ></div>
+      </div>
+      <div class="msg" id="msg" role="alert"></div>
+
+      <div class="card brief">
+        <div class="lab">Summary</div>
+        <p id="headline"></p>
+        <div class="stats" id="stats"></div>
+        <div class="early" id="early"></div>
+      </div>
+
+      <div class="card">
+        <div class="lab" id="trend-lab">Build vs disruptors</div>
+        <div class="chart" id="chart"></div>
+        <div class="leg">
+          <span>Build</span><span class="r">Disruptors</span
+          ><span class="g">Goal</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="lab">Calendar</div>
+        <div id="cal"></div>
+      </div>
+
+      <div class="card">
+        <div class="lab">Habits against their targets</div>
+        <div id="habits"></div>
+      </div>
+
+      <div class="two">
+        <div class="card">
+          <div class="lab">Why you miss</div>
+          <div id="reasons"></div>
+          <div id="wkwrap">
+            <div class="lab" style="margin-top: 14px">Which days</div>
+            <div class="wk" id="wk"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="lab">Disruptors</div>
+          <div id="dis"></div>
+        </div>
+      </div>
+
+      <div class="acts">
+        <button class="btn" id="share" type="button">Share report</button>
+        <button class="btn" id="csv" type="button">Export CSV</button>
+        <span id="act" role="status"></span>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="/api/config"></script>
+    <script src="/motion.js"></script>
+    <script>
+      // Motion is cosmetic. If motion.js is missing, everything still works.
+      window.Motion = window.Motion || {};
+      Motion.reveal = Motion.reveal || function () {};
+    </script>
+    <script src="/calendar.js"></script>
+    <script src="/nav.js"></script>
+    <script>
+      var C = window.LAMBERT || {},
+        sb = null,
+        range = 30,
+        P = null,
+        calMounted = false,
+        loadId = 0,
+        monthCache = {};
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function mk(tag, cls, txt) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt != null) e.textContent = txt;
+        return e;
+      }
+      function show(text) {
+        var m = $("msg");
+        m.textContent = text || "";
+        m.classList.toggle("show", !!text);
+      }
+      function act(text) {
+        $("act").textContent = text || "";
+      }
+
+      function token() {
+        return sb.auth.getSession().then(function (r) {
+          var s = r.data && r.data.session;
+          if (!s) {
+            location.replace("/login.html");
+            return new Promise(function () {});
+          }
+          return s.access_token;
+        });
+      }
+      function api(path) {
+        return token().then(function (t) {
+          return fetch(path, { headers: { Authorization: "Bearer " + t } });
+        });
+      }
+      function json(path) {
+        return api(path).then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (b) {
+              if (!res.ok)
+                throw new Error(
+                  b.error || "Request failed (" + res.status + ")",
+                );
+              return b;
+            });
+        });
+      }
+
+      var STATUS = {
+        on_track: ["on", "ON TRACK"],
+        adjust: ["adj", "ADJUST"],
+        off_track: ["off", "OFF TRACK"],
+      };
+
+      function drawStats(p) {
+        var el = $("stats");
+        el.textContent = "";
+        var change =
+          p.deltaPct == null
+            ? ["—", "no earlier period to compare", ""]
+            : [
+                (p.deltaPct >= 0 ? "▲ " : "▼ ") + Math.abs(p.deltaPct) + "%",
+                "vs previous " + range + " days",
+                p.deltaPct >= 0 ? "up" : "dn",
+              ];
+        [
+          ["Built", p.build + "m", "last " + range + " days", ""],
+          ["Change", change[0], change[1], change[2]],
+          [
+            "Active days",
+            p.activeDays + " of " + p.spanDays,
+            "any build time",
+            "",
+          ],
+          ["Goal days", String(p.goalDays), "daily goal reached", ""],
+          [
+            "Focus score",
+            p.focusScore == null ? "—" : p.focusScore + "%",
+            "build vs disruptors",
+            "",
+          ],
+        ].forEach(function (s) {
+          var c = mk("div", "stat");
+          c.appendChild(mk("small", "", s[0]));
+          c.appendChild(mk("b", s[3], s[1]));
+          c.appendChild(mk("small", "", s[2]));
+          el.appendChild(c);
+        });
+        $("early").textContent =
+          p.spanDays < 7
+            ? "Early days: this page gets more useful after a week of logs."
+            : "";
+      }
+
+      function drawChart(s) {
+        var el = $("chart");
+        el.textContent = "";
+        el.classList.toggle("dense", s.points.length > 8);
+        $("trend-lab").textContent =
+          "Build vs disruptors · " + (s.unit === "day" ? "daily" : "weekly");
+        var max = 10,
+          H = 150;
+        s.points.forEach(function (p) {
+          max = Math.max(max, p.build, p.stop, p.goalMin);
+        });
+        max *= 1.1;
+        s.points.forEach(function (p, i) {
+          var col = mk("div", "ccol"),
+            pair = mk("div", "pair");
+          col.style.setProperty("--i", i);
+          var b = mk("div", "b bd"),
+            d = mk("div", "b sp");
+          b.style.setProperty("--i", i);
+          d.style.setProperty("--i", i);
+          b.style.height =
+            (p.build ? Math.max(3, Math.round((p.build / max) * H)) : 0) + "px";
+          d.style.height =
+            (p.stop ? Math.max(3, Math.round((p.stop / max) * H)) : 0) + "px";
+          if (p.goalMin) {
+            var g = mk("div", "gm");
+            g.style.bottom = Math.round((p.goalMin / max) * H) + "px";
+            pair.appendChild(g);
+          }
+          pair.appendChild(b);
+          pair.appendChild(d);
+          col.title =
+            p.label +
+            ": " +
+            p.build +
+            " min built, " +
+            p.stop +
+            " min on disruptors";
+          col.appendChild(pair);
+          col.appendChild(mk("div", "cl", p.label));
+          var n = mk("div", "cn", p.build ? String(p.build) : "");
+          if (p.stop) {
+            n.appendChild(document.createTextNode(p.build ? " " : ""));
+            n.appendChild(mk("i", "", "−" + p.stop));
+          }
+          col.appendChild(n);
+          el.appendChild(col);
+        });
+      }
+
+      function drawHabits(list) {
+        var el = $("habits");
+        el.textContent = "";
+        if (!list.length) {
+          el.appendChild(
+            mk("div", "empty", "No build habits logged in this period."),
+          );
+          return;
+        }
+        list.forEach(function (h) {
+          var row = mk("div", "hrow"),
+            left = mk("div");
+          left.appendChild(mk("div", "hnm", h.label));
+          left.appendChild(
+            mk(
+              "div",
+              "hsub",
+              h.activeDays +
+                " of " +
+                h.spanDays +
+                " days · " +
+                h.minutes +
+                " min" +
+                (h.targetDaysPerWeek
+                  ? " · target " + h.targetDaysPerWeek + " days/week"
+                  : ""),
+            ),
+          );
+          var right = mk("div", "hr"),
+            sp = mk("div", "spark");
+          sp.setAttribute(
+            "aria-label",
+            "Days active per week, last 8 weeks: " + h.spark.join(", "),
+          );
+          h.spark.forEach(function (n, i) {
+            var b = mk("i", i === 7 ? "now" : "");
+            b.style.height = Math.max(3, Math.round((n / 7) * 30)) + "px";
+            b.title = n + " day" + (n === 1 ? "" : "s");
+            sp.appendChild(b);
+          });
+          var st = STATUS[h.status] || [
+            "nt",
+            h.targetDaysPerWeek ? "TOO EARLY" : "NO TARGET",
+          ];
+          right.appendChild(sp);
+          right.appendChild(mk("span", "chip " + st[0], st[1]));
+          row.appendChild(left);
+          row.appendChild(right);
+          el.appendChild(row);
+        });
+      }
+
+      function barRow(el, label, value, max, amber) {
+        var r = mk("div", "rk");
+        r.appendChild(mk("span", "", label));
+        r.appendChild(mk("span", "mono", String(value)));
+        var b = mk("div", "bar" + (amber ? " amb" : "")),
+          f = mk("i");
+        f.style.width = Math.round((value / max) * 100) + "%";
+        b.appendChild(f);
+        el.appendChild(r);
+        el.appendChild(b);
+      }
+
+      function drawMisses(m) {
+        var el = $("reasons");
+        el.textContent = "";
+        $("wkwrap").hidden = !m.total;
+        if (!m.total) {
+          el.appendChild(
+            mk("div", "empty", "No misses recorded in this period."),
+          );
+          return;
+        }
+        m.byReason.forEach(function (r) {
+          barRow(el, r.label, r.count, m.byReason[0].count, true);
+        });
+        var wk = $("wk");
+        wk.textContent = "";
+        var top = Math.max.apply(null, m.byWeekday);
+        ["S", "M", "T", "W", "T", "F", "S"].forEach(function (d, i) {
+          var c = mk(
+            "div",
+            m.byWeekday[i] === top && top > 1 ? "hi" : "",
+            String(m.byWeekday[i]),
+          );
+          c.appendChild(mk("small", "", d));
+          wk.appendChild(c);
+        });
+      }
+
+      function drawDisruptors(list) {
+        var el = $("dis");
+        el.textContent = "";
+        if (!list.length) {
+          el.appendChild(
+            mk("div", "empty", "No disruptors logged in this period."),
+          );
+          return;
+        }
+        list.forEach(function (d) {
+          barRow(
+            el,
+            d.label + (d.count > 1 ? " · " + d.count + "×" : ""),
+            d.minutes + "m",
+            list[0].minutes,
+            false,
+          );
+        });
+      }
+
+      function render(d) {
+        P = d;
+        $("headline").textContent = d.headline;
+        drawStats(d.period);
+        drawChart(d.series);
+        drawHabits(d.habits);
+        drawMisses(d.misses);
+        drawDisruptors(d.disruptors);
+        if (!calMounted) {
+          calMounted = true;
+          Calendar.mount($("cal"), {
+            goal: d.goal,
+            today: d.today,
+            joined: d.joined,
+            getMonth: function (k) {
+              if (monthCache[k]) return Promise.resolve(monthCache[k]);
+              return json("/api/analytics?month=" + k).then(function (r) {
+                monthCache[k] = r.days;
+                return r.days;
+              });
+            },
+          });
+          Motion.reveal(".card");
+        }
+      }
+
+      function load(r) {
+        range = r;
+        var id = ++loadId;
+        show("");
+        act("");
+        [].forEach.call($("range").children, function (b) {
+          b.setAttribute("aria-pressed", String(+b.dataset.r === r));
+        });
+        return json("/api/analytics?range=" + r).then(
+          function (d) {
+            if (id === loadId) render(d);
+          },
+          function (e) {
+            if (id === loadId) show(e.message);
+          },
+        );
+      }
+
+      function reportText() {
+        var p = P.period,
+          L = [
+            "Lambert report: last " + P.range + " days",
+            "Built: " +
+              p.build +
+              " min" +
+              (p.deltaPct != null
+                ? " (" +
+                  (p.deltaPct >= 0 ? "up " : "down ") +
+                  Math.abs(p.deltaPct) +
+                  "% on the previous " +
+                  P.range +
+                  " days)"
+                : ""),
+            "Active days: " +
+              p.activeDays +
+              " of " +
+              p.spanDays +
+              " · Goal days: " +
+              p.goalDays,
+          ];
+        if (p.focusScore != null) L.push("Focus score: " + p.focusScore + "%");
+        var top = P.disruptors[0];
+        if (top && !top.other)
+          L.push(
+            "Biggest disruptor: " + top.label + " (" + top.minutes + " min)",
+          );
+        var r = P.misses.byReason[0];
+        if (r && r.reason !== "none")
+          L.push(
+            "Most common reason for a miss: " + r.label + " (" + r.count + ")",
+          );
+        return L.join("\n");
+      }
+      $("share").onclick = function () {
+        if (!P) return;
+        var text = reportText();
+        if (navigator.share)
+          navigator
+            .share({ title: "My Lambert report", text: text })
+            .catch(function () {});
+        else if (navigator.clipboard)
+          navigator.clipboard.writeText(text).then(
+            function () {
+              act("Report copied to the clipboard.");
+            },
+            function () {
+              act("Couldn’t copy. Select the summary and copy it by hand.");
+            },
+          );
+        else act("Sharing isn’t available in this browser.");
+      };
+      $("csv").onclick = function () {
+        act("Preparing…");
+        api("/api/analytics?format=csv")
+          .then(function (res) {
+            if (!res.ok) throw new Error("Export failed (" + res.status + ")");
+            return res.blob();
+          })
+          .then(function (blob) {
+            var url = URL.createObjectURL(blob),
+              a = mk("a");
+            a.href = url;
+            a.download = "lambert-logs.csv";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () {
+              URL.revokeObjectURL(url);
+            }, 1000);
+            act("Downloaded.");
+          })
+          .catch(function (e) {
+            act(e.message);
+          });
+      };
+
+      [7, 30, 90].forEach(function (r) {
+        var b = mk("button", "", r + " days");
+        b.type = "button";
+        b.dataset.r = r;
+        b.onclick = function () {
+          if (r !== range) load(r);
+        };
+        $("range").appendChild(b);
+      });
+
+      (async function () {
+        if (!window.supabase || !C.SUPABASE_URL || !C.SUPABASE_ANON_KEY) {
+          $("gate").textContent =
+            "The site isn’t connected to its database yet.";
+          return;
+        }
+        sb = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+        var s = (await sb.auth.getSession()).data.session;
+        if (!s) {
+          location.replace("/login.html");
+          return;
+        }
+        $("gate").hidden = true;
+        $("app").hidden = false;
+        await load(30);
+      })();
+    </script>
+  </body>
+</html>
