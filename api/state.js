@@ -5,8 +5,6 @@
 const { db } = require("./_lib/db.js");
 const { getApprovedUser } = require("./_lib/auth.js");
 const E = require("../engine/engine.js");
-const { enrichState } = require("../engine/dashboard.js");
-
 const TZ_OFFSET_MIN = 60; // Owerri / Lagos, UTC+1 all year
 const LOG_LIMIT = 2000;
 
@@ -45,11 +43,6 @@ module.exports = async function handler(req, res) {
     if (logsR.error)
       return res.status(500).json({ error: "Couldn't load your logs" });
 
-    // Older saves wrote habit_type "build"; the engine calls build time "continue".
-    const logs = (logsR.data || []).map((r) =>
-      r.habit_type === "build" ? { ...r, habit_type: "continue" } : r,
-    );
-
     // Settings are optional: a missing row or table just means defaults.
     const warnings = [];
     if (settingsR.error) warnings.push("settings_unavailable");
@@ -72,15 +65,6 @@ module.exports = async function handler(req, res) {
       console.error("state failed validation:", problems);
       return res.status(500).json({ error: "state_invalid" });
     }
-
-    enrichState({
-      state,
-      logs: logsR.data || [],
-      targets: E.sanitizeTargets(settings.targets),
-      dailyGoalMin: settings.daily_goal_min,
-      nowMs,
-      tzOffsetMin: TZ_OFFSET_MIN,
-    });
 
     const goalRow = goalsR && goalsR.data && goalsR.data[0];
     return res.status(200).json({

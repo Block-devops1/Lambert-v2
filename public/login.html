@@ -307,9 +307,9 @@
                 placeholder="Repeat your password"
               />
               <div class="agree">
-                <input id="agree" type="checkbox" />
-                <label for="agree"
-                  >I’m 18 or older and I agree to the
+                <input id="consent" type="checkbox" />
+                <label for="consent"
+                  >I am 18 or older and I agree to the
                   <a href="/terms.html" target="_blank" rel="noopener">Terms</a>
                   and
                   <a href="/privacy.html" target="_blank" rel="noopener"
@@ -409,7 +409,7 @@
           return say("Password must be at least 8 characters.", "err");
         if (mode === "up" && pw !== $("pw2").value)
           return say("The two passwords don’t match.", "err");
-        if (mode === "up" && !$("agree").checked)
+        if (mode === "up" && !$("consent").checked)
           return say(
             "Tick the box to confirm you are 18 or older and agree to the Terms and Privacy Policy.",
             "err",

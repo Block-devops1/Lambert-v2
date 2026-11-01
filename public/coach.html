@@ -158,6 +158,12 @@
         font-family: "JetBrains Mono", monospace;
         padding: 3px 0;
       }
+      .edge {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.72rem;
+        padding: 4px 0 2px;
+      }
       .empty {
         text-align: center;
         color: var(--muted);
@@ -361,9 +367,7 @@
         f.scrollTop = f.scrollHeight;
       }
 
-      function bubble(role, text, isErr) {
-        var empty = $("msgs").querySelector(".empty");
-        if (empty) empty.remove();
+      function makeBubble(role, text, isErr) {
         var wrap = mk(
           "div",
           "msg " + (role === "user" ? "me" : "ai") + (isErr ? " err" : ""),
@@ -371,9 +375,22 @@
         wrap.appendChild(mk("div", "bub", text));
         var foot = mk("div", "foot");
         wrap.appendChild(foot);
-        $("msgs").appendChild(wrap);
+        return { wrap: wrap, foot: foot };
+      }
+      function bubble(role, text, isErr) {
+        var empty = $("msgs").querySelector(".empty");
+        if (empty) empty.remove();
+        var b = makeBubble(role, text, isErr);
+        $("msgs").appendChild(b.wrap);
         toBottom();
-        return foot;
+        return b.foot;
+      }
+      // A saved message, built but not attached (admins also see which model wrote it).
+      function rowBubble(m) {
+        var b = makeBubble(m.role, m.content);
+        if (isAdmin && m.role === "assistant" && m.model)
+          b.foot.appendChild(mk("span", "model", m.model));
+        return b.wrap;
       }
       function chip(foot, text) {
         foot.appendChild(mk("span", "chip", text));
@@ -429,60 +446,77 @@
         t.style.height = Math.min(t.scrollHeight, 140) + "px";
       }
 
+      var PAGE = 20,
+        oldestTs = null,
+        noMore = false,
+        loadingOlder = false,
+        edgeEl = null;
+
+      // One page of saved messages, newest first. Reads straight from Supabase: no AI tokens.
+      async function fetchPage(beforeTs) {
+        function q(cols) {
+          var qq = sb
+            .from("lambert_conversations")
+            .select(cols)
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false })
+            .limit(PAGE);
+          return beforeTs ? qq.lt("created_at", beforeTs) : qq;
+        }
+        var r = await q("role,content,model,created_at");
+        if (r.error) r = await q("role,content,created_at"); // the model column may not exist yet
+        return r;
+      }
+
       async function load() {
-        var q = await Promise.all([
-          sb
-            .from("habit_logs")
-            .select(
-              "subject,duration,habit_type,description,reason_category,created_at",
-            )
-            .eq("user_id", uid)
-            .order("created_at", { ascending: false })
-            .limit(1000),
-          sb
-            .from("lambert_goals")
-            .select("goal")
-            .eq("user_id", uid)
-            .eq("is_active", true)
-            .order("created_at", { ascending: false }),
-          sb
-            .from("lambert_memories")
-            .select("memory")
-            .eq("user_id", uid)
-            .order("created_at", { ascending: true }),
-          sb
-            .from("lambert_conversations")
-            .select("role,content,model")
-            .eq("user_id", uid)
-            .order("created_at", { ascending: false })
-            .limit(20),
-          sb
-            .from("lambert_challenges")
-            .select("challenge")
-            .eq("user_id", uid)
-            .eq("week_start", L.weekStartKey(new Date()))
-            .order("created_at", { ascending: false })
-            .limit(1),
-        ]);
-        // The model column may not exist yet; never lose the chat history because of it.
-        if (q[3].error)
-          q[3] = await sb
-            .from("lambert_conversations")
-            .select("role,content")
-            .eq("user_id", uid)
-            .order("created_at", { ascending: false })
-            .limit(20);
-        if (q[0].error)
-          banner(
-            "Couldn’t load your logs, so Lambert is working without them: " +
-              q[0].error.message,
+        var r = await fetchPage(null);
+        if (r.error)
+          banner("Couldn’t load your chat history: " + r.error.message);
+        var rows = r.data || [];
+        chatHistory = rows.slice().reverse();
+        if (rows.length) oldestTs = rows[rows.length - 1].created_at;
+        noMore = rows.length < PAGE;
+      }
+
+      function setEdge(text) {
+        if (edgeEl) edgeEl.textContent = text;
+      }
+
+      // Scrolling to the top pulls the next page of older messages, keeping the reader's place.
+      async function loadOlder() {
+        if (loadingOlder || noMore || !oldestTs) return;
+        loadingOlder = true;
+        setEdge("Loading earlier messages…");
+        try {
+          var r = await fetchPage(oldestTs);
+          if (r.error) {
+            setEdge("Couldn’t load earlier messages. Scroll up to try again.");
+            return;
+          }
+          var rows = r.data || [];
+          if (rows.length) {
+            var f = $("feed"),
+              prevH = f.scrollHeight,
+              prevTop = f.scrollTop,
+              anchor = edgeEl.nextSibling;
+            rows
+              .slice()
+              .reverse()
+              .forEach(function (m) {
+                $("msgs").insertBefore(rowBubble(m), anchor);
+              });
+            oldestTs = rows[rows.length - 1].created_at;
+            f.scrollTop = prevTop + (f.scrollHeight - prevH);
+          }
+          if (rows.length < PAGE) noMore = true;
+          setEdge(
+            noMore
+              ? "Start of your conversation"
+              : "Scroll up for earlier messages",
           );
-        logs = q[0].data || [];
-        goals = q[1].data || [];
-        memories = q[2].data || [];
-        chatHistory = (q[3].data || []).slice().reverse();
-        weeklyChallenge =
-          q[4].data && q[4].data[0] ? q[4].data[0].challenge : null;
+        } finally {
+          loadingOlder = false;
+        }
       }
 
       async function saveConvo(rows) {
@@ -599,10 +633,12 @@
             },
             body: JSON.stringify({
               message: text,
-              history: chatHistory.slice(-20),
-              goals: goals,
-              memories: memories,
-              weeklyChallenge: weeklyChallenge,
+              history: chatHistory.slice(-6).map(function (m) {
+                return {
+                  role: m.role,
+                  content: String(m.content).slice(0, 300),
+                };
+              }),
             }),
           });
           var data = await res.json().catch(function () {
@@ -711,12 +747,21 @@
         await load();
         $("gate").hidden = true;
         $("top").hidden = $("feed").hidden = $("comp").hidden = false;
-        chatHistory.forEach(function (m) {
-          var f = bubble(m.role, m.content);
-          if (isAdmin && m.role === "assistant" && m.model)
-            f.appendChild(mk("span", "model", m.model));
+        if (chatHistory.length) {
+          edgeEl = mk("div", "edge");
+          $("msgs").appendChild(edgeEl);
+          setEdge(
+            noMore
+              ? "Start of your conversation"
+              : "Scroll up for earlier messages",
+          );
+          chatHistory.forEach(function (m) {
+            $("msgs").appendChild(rowBubble(m));
+          });
+        } else showEmpty();
+        $("feed").addEventListener("scroll", function () {
+          if ($("feed").scrollTop < 60) loadOlder();
         });
-        if (!chatHistory.length) showEmpty();
         toBottom();
         if (!TOUCH) $("in").focus();
       })();

@@ -131,6 +131,74 @@ function streakFor(daySet, today) {
   return { current, longest, loggedToday: daySet.has(today) };
 }
 
+// Weekly habit strength: a smoothed score so one bad week lowers it a little and
+// a good week lifts it back, instead of a streak that resets to zero.
+//   - Only COMPLETED Monday-weeks count (the current week never does).
+//   - The first week counted is the first FULL week after the habit's first log.
+//   - Each week scores min(1, daysDone / targetDays).
+//   - strength starts at the first week's score, then moves STRENGTH_ALPHA of the
+//     way toward each new week's score.
+//   - strength is null until two full weeks exist, and for habits with no target.
+const STRENGTH_ALPHA = 0.3;
+
+function weeklyStrength(
+  doneDays,
+  targetDays,
+  today,
+  { alpha = STRENGTH_ALPHA, maxWeeks = 104 } = {},
+) {
+  if (
+    !Number.isInteger(targetDays) ||
+    targetDays < 1 ||
+    !doneDays ||
+    doneDays.size === 0
+  )
+    return null;
+  const thisMonday = mondayOf(today);
+  const first = [...doneDays].sort()[0];
+  let start = mondayOf(first);
+  if (start < first) start = shiftDay(start, 7); // first FULL week
+  const earliest = shiftDay(thisMonday, -7 * maxWeeks);
+  if (start < earliest) start = earliest;
+
+  const weeks = [];
+  for (let w = start; w < thisMonday; w = shiftDay(w, 7)) {
+    let n = 0;
+    for (let i = 0; i < 7; i++) if (doneDays.has(shiftDay(w, i))) n++;
+    weeks.push({
+      start: w,
+      daysDone: n,
+      score: Math.min(1, n / targetDays),
+      met: n >= targetDays,
+    });
+  }
+
+  let value = null;
+  let previous = null;
+  for (const wk of weeks) {
+    previous = value;
+    value = value == null ? wk.score : value + alpha * (wk.score - value);
+  }
+  // A comeback is a week that met the target right after a week that did not.
+  let comebacks = 0;
+  for (let i = 1; i < weeks.length; i++)
+    if (weeks[i].met && !weeks[i - 1].met) comebacks++;
+
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  return {
+    strength:
+      weeks.length >= 2
+        ? { value: r3(value), previous: r3(previous), weeks: weeks.length }
+        : null,
+    weekly: {
+      scores: weeks.slice(-8).map((w) => r3(w.score)), // last 8 full weeks, oldest first
+      weeksTargetMet: weeks.filter((w) => w.met).length,
+      comebacks,
+      fullWeeks: weeks.length,
+    },
+  };
+}
+
 // Deterministic goal status for a build habit with a days-per-week target.
 //   met       -> target already reached this week
 //   off_track -> not enough days left to reach it
@@ -302,6 +370,8 @@ function buildState({
         missToday: null,
         targetDaysPerWeek: null,
         status: null,
+        strength: null,
+        weekly: null,
       });
       continue;
     }
@@ -309,6 +379,7 @@ function buildState({
     const streak = streakFor(doneDays, today);
     const target = tmap[subject] ? tmap[subject].daysPerWeek : null;
     const missRow = rows.find((r) => r.day === today && r.minutes === 0);
+    const ws = target == null ? null : weeklyStrength(doneDays, target, today);
     habits.push({
       ...base,
       streak: { current: streak.current, longest: streak.longest },
@@ -323,6 +394,8 @@ function buildState({
               loggedToday,
               targetDays: target,
             }),
+      strength: ws ? ws.strength : null,
+      weekly: ws ? ws.weekly : null,
     });
   }
   habits.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -458,6 +531,21 @@ function validateState(state) {
     } else if (h.streak) {
       errors.push(`${p} stop habit must not have a streak`);
     }
+    if (h.strength) {
+      for (const k of ["value", "previous"]) {
+        if (
+          !Number.isFinite(h.strength[k]) ||
+          h.strength[k] < 0 ||
+          h.strength[k] > 1
+        ) {
+          errors.push(`${p}.strength.${k} must be between 0 and 1`);
+        }
+      }
+      if (!(h.strength.weeks >= 2))
+        errors.push(`${p}.strength needs at least 2 full weeks`);
+      if (h.targetDaysPerWeek == null)
+        errors.push(`${p} has strength but no target`);
+    }
     if (h.daysThisWeek > 7) errors.push(`${p} daysThisWeek > 7`);
     if (h.loggedToday && h.minutesToday === 0)
       errors.push(`${p} loggedToday but 0 minutes`);
@@ -511,6 +599,8 @@ module.exports = {
   normReason,
   cleanLogs,
   streakFor,
+  weeklyStrength,
+  STRENGTH_ALPHA,
   habitStatus,
   missPatterns,
   emergencyCount,
