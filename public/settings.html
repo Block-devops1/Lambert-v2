@@ -234,6 +234,10 @@
 
       <button class="save" id="save" type="button">Save settings</button>
     </div>
+    <p style="text-align: center; font-size: 0.8rem; margin: 24px 0">
+      <a href="/privacy.html">Privacy Policy</a> ·
+      <a href="/terms.html">Terms</a>
+    </p>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="/api/config"></script>
@@ -360,19 +364,17 @@
         btn.disabled = true;
         btn.textContent = "Saving…";
         try {
-          var r = await sb
-            .from("lambert_settings")
-            .upsert(
-              [
-                {
-                  user_id: uid,
-                  daily_goal_min: goal,
-                  targets: targets,
-                  updated_at: new Date().toISOString(),
-                },
-              ],
-              { onConflict: "user_id" },
-            );
+          var r = await sb.from("lambert_settings").upsert(
+            [
+              {
+                user_id: uid,
+                daily_goal_min: goal,
+                targets: targets,
+                updated_at: new Date().toISOString(),
+              },
+            ],
+            { onConflict: "user_id" },
+          );
           if (r.error)
             return say(
               "Couldn’t save: " +
