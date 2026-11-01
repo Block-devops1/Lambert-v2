@@ -287,10 +287,102 @@
         width: 7px;
         min-height: 3px;
         border-radius: 2px;
-        background: #2a3550;
+        background: #3a475f;
+      }
+      .spark i.met {
+        background: var(--green);
       }
       .spark i.now {
+        background: transparent;
+        box-shadow: inset 0 0 0 1.5px var(--green);
+      }
+      .str {
+        text-align: right;
+        min-width: 62px;
+      }
+      .str b {
+        display: block;
+        font:
+          700 1.25rem "JetBrains Mono",
+          monospace;
+        line-height: 1.1;
+      }
+      .str small {
+        display: block;
+        font-size: 0.64rem;
+        color: var(--muted);
+      }
+      .str .d {
+        font:
+          600 0.7rem "JetBrains Mono",
+          monospace;
+      }
+      .hsub2 {
+        font-size: 0.74rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .note {
+        font-size: 0.74rem;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .ins {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.92rem;
+        flex-wrap: wrap;
+      }
+      .ins:last-child {
+        border-bottom: 0;
+      }
+      .ins a {
+        color: var(--amber);
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .wkd {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        align-items: end;
+      }
+      .wkd div {
+        text-align: center;
+      }
+      .wkd i {
+        display: block;
+        margin: 0 auto 6px;
+        width: 70%;
+        max-width: 30px;
         background: var(--green);
+        border-radius: 5px 5px 2px 2px;
+        transform-origin: bottom;
+        animation: m-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      .wkd .lo i {
+        background: var(--amber);
+      }
+      .wkd b {
+        display: block;
+        font:
+          600 0.74rem "JetBrains Mono",
+          monospace;
+      }
+      .wkd small {
+        font-size: 0.66rem;
+        color: var(--muted);
+      }
+      .rsub {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin: -8px 0 13px;
       }
       .chip {
         font-size: 0.66rem;
@@ -430,6 +522,60 @@
           margin-top: 14px;
         }
       }
+      /* Save as PDF / print: a light page that keeps every colour. */
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          animation: none !important;
+          transition: none !important;
+        }
+        :root {
+          --bg: #fff;
+          --card: #fff;
+          --line: #d3dae8;
+          --text: #101828;
+          --muted: #5b667a;
+        }
+        body {
+          background: #fff;
+          color: #101828;
+          padding-bottom: 0;
+        }
+        .range,
+        .acts,
+        .gate,
+        #msg,
+        .ins a,
+        .lnav-btn,
+        .lnav-panel,
+        .lnav-overlay {
+          display: none !important;
+        }
+        .m-armed {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        .card {
+          break-inside: avoid;
+        }
+        .stat,
+        .wk div {
+          background: #f4f6fa;
+        }
+        .spark i {
+          background: #b9c2d3;
+        }
+        .spark i.met {
+          background: #10b981;
+        }
+        .spark i.now {
+          background: transparent;
+        }
+        .cn i {
+          color: #b42318;
+        }
+      }
     </style>
   </head>
   <body>
@@ -457,6 +603,11 @@
         <div class="early" id="early"></div>
       </div>
 
+      <div class="card" id="c-ins" hidden>
+        <div class="lab">What stands out</div>
+        <div id="insights"></div>
+      </div>
+
       <div class="card">
         <div class="lab" id="trend-lab">Build vs disruptors</div>
         <div class="chart" id="chart"></div>
@@ -464,6 +615,11 @@
           <span>Build</span><span class="r">Disruptors</span
           ><span class="g">Goal</span>
         </div>
+      </div>
+
+      <div class="card" id="c-wkd" hidden>
+        <div class="lab">Average build minutes by weekday</div>
+        <div class="wkd" id="wkd" style="height: 150px"></div>
       </div>
 
       <div class="card">
@@ -494,8 +650,10 @@
       <div class="acts">
         <button class="btn" id="share" type="button">Share report</button>
         <button class="btn" id="csv" type="button">Export CSV</button>
+        <button class="btn" id="pdf" type="button">Save as PDF</button>
         <span id="act" role="status"></span>
       </div>
+      <div class="note" id="trunc"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -515,7 +673,8 @@
         P = null,
         calMounted = false,
         loadId = 0,
-        monthCache = {};
+        monthCache = {},
+        rangeCache = {};
       var $ = function (id) {
         return document.getElementById(id);
       };
@@ -572,6 +731,57 @@
         off_track: ["off", "OFF TRACK"],
       };
 
+      // Best streak is always shown. A streak of zero never is: it says "starting again".
+      function streakStat(s) {
+        if (!s.longest)
+          return ["Best streak", "—", "log a build day to begin", ""];
+        return [
+          "Best streak",
+          s.longest + (s.longest === 1 ? " day" : " days"),
+          s.current > 0 ? "current: " + s.current : "starting again",
+          "",
+        ];
+      }
+
+      function drawInsights(list) {
+        $("c-ins").hidden = !list.length;
+        var el = $("insights");
+        el.textContent = "";
+        list.forEach(function (i) {
+          var r = mk("div", "ins"),
+            a = mk("a", "", "Ask Lambert →");
+          a.href = "/coach.html?ask=" + encodeURIComponent(i.ask);
+          r.appendChild(mk("span", "", i.text));
+          r.appendChild(a);
+          el.appendChild(r);
+        });
+      }
+
+      function drawWeekday(w, activeDays) {
+        $("c-wkd").hidden = activeDays < 7;
+        var el = $("wkd");
+        el.textContent = "";
+        var max =
+          Math.max.apply(
+            null,
+            w.avg.map(function (v) {
+              return v || 0;
+            }),
+          ) || 1;
+        ["S", "M", "T", "W", "T", "F", "S"].forEach(function (d, i) {
+          var c = mk("div", w.weakest === i ? "lo" : ""),
+            bar = mk("i");
+          bar.style.height =
+            Math.max(3, Math.round(((w.avg[i] || 0) / max) * 110)) + "px";
+          bar.style.setProperty("--i", i);
+          c.title = w.avg[i] == null ? "No data" : w.avg[i] + " min on average";
+          c.appendChild(bar);
+          c.appendChild(mk("b", "", w.avg[i] == null ? "–" : String(w.avg[i])));
+          c.appendChild(mk("small", "", d));
+          el.appendChild(c);
+        });
+      }
+
       function drawStats(p) {
         var el = $("stats");
         el.textContent = "";
@@ -592,7 +802,7 @@
             "any build time",
             "",
           ],
-          ["Goal days", String(p.goalDays), "daily goal reached", ""],
+          streakStat(P.streak),
           [
             "Focus score",
             p.focusScore == null ? "—" : p.focusScore + "%",
@@ -662,6 +872,13 @@
         });
       }
 
+      var WEEK_STATUS = {
+        met: ["on", "TARGET MET"],
+        on_track: ["on", "ON TRACK"],
+        adjust: ["adj", "ADJUST"],
+        off_track: ["off", "OFF TRACK"],
+      };
+
       function drawHabits(list) {
         var el = $("habits");
         el.textContent = "";
@@ -671,6 +888,7 @@
           );
           return;
         }
+        var anyStrength = false;
         list.forEach(function (h) {
           var row = mk("div", "hrow"),
             left = mk("div");
@@ -684,37 +902,131 @@
                 h.spanDays +
                 " days · " +
                 h.minutes +
-                " min" +
-                (h.targetDaysPerWeek
-                  ? " · target " + h.targetDaysPerWeek + " days/week"
-                  : ""),
+                " min · " +
+                h.sessions +
+                (h.sessions === 1 ? " session" : " sessions") +
+                (h.sessions ? " · avg " + h.avgSession + " min" : ""),
             ),
           );
-          var right = mk("div", "hr"),
-            sp = mk("div", "spark");
-          sp.setAttribute(
-            "aria-label",
-            "Days active per week, last 8 weeks: " + h.spark.join(", "),
-          );
-          h.spark.forEach(function (n, i) {
-            var b = mk("i", i === 7 ? "now" : "");
-            b.style.height = Math.max(3, Math.round((n / 7) * 30)) + "px";
-            b.title = n + " day" + (n === 1 ? "" : "s");
-            sp.appendChild(b);
-          });
-          var st = STATUS[h.status] || [
-            "nt",
-            h.targetDaysPerWeek ? "TOO EARLY" : "NO TARGET",
-          ];
+          if (h.targetDaysPerWeek) {
+            var t =
+              "Target " +
+              h.targetDaysPerWeek +
+              " days/week · this week " +
+              h.thisWeek.daysDone +
+              " of " +
+              h.targetDaysPerWeek;
+            if (h.weekly && h.weekly.fullWeeks)
+              t +=
+                " · met in " +
+                h.weekly.weeksMet +
+                " of " +
+                h.weekly.fullWeeks +
+                " full weeks";
+            left.appendChild(mk("div", "hsub2", t));
+          }
+          var sk = h.streak;
+          if (sk.longest)
+            left.appendChild(
+              mk(
+                "div",
+                "hsub2",
+                sk.current > 0
+                  ? "Streak " + sk.current + " · best " + sk.longest
+                  : "Starting again. Your best is " +
+                      sk.longest +
+                      (sk.longest === 1 ? " day." : " days."),
+              ),
+            );
+          if (h.comebacks)
+            left.appendChild(
+              mk(
+                "div",
+                "hsub2",
+                "Back on target after a missed week " +
+                  h.comebacks +
+                  (h.comebacks === 1 ? " time" : " times"),
+              ),
+            );
+
+          var right = mk("div", "hr");
+          if (h.strength != null) {
+            anyStrength = true;
+            var st = mk("div", "str");
+            st.appendChild(mk("b", "", h.strength + "%"));
+            var dl = h.strengthDelta,
+              d = mk(
+                "span",
+                "d " + (dl > 0 ? "up" : dl < 0 ? "dn" : ""),
+                dl > 0 ? "▲ " + dl : dl < 0 ? "▼ " + Math.abs(dl) : "no change",
+              );
+            var sm = mk("small");
+            sm.appendChild(d);
+            sm.appendChild(document.createTextNode(" strength"));
+            st.appendChild(sm);
+            right.appendChild(st);
+          } else if (h.targetDaysPerWeek)
+            right.appendChild(mk("div", "hsub", "Strength after 2 full weeks"));
+          // Bars are the engine's weekly scores (share of the target reached, last full weeks),
+          // then this week so far, outlined because it isn't finished.
+          var sp = mk("div", "spark");
+          if (h.thisWeek && h.weekly) {
+            var sc = h.weekly.scores;
+            sp.setAttribute(
+              "aria-label",
+              "Share of the weekly target reached, recent full weeks: " +
+                sc
+                  .map(function (x) {
+                    return Math.round(x * 100) + "%";
+                  })
+                  .join(", ") +
+                ", then this week so far",
+            );
+            sc.forEach(function (x) {
+              var b = mk("i", x >= 1 ? "met" : "");
+              b.style.height = Math.max(3, Math.round(x * 30)) + "px";
+              b.title =
+                Math.round(x * 100) +
+                "% of the target" +
+                (x >= 1 ? ", met" : "");
+              sp.appendChild(b);
+            });
+            var cur = mk("i", "now");
+            cur.style.height =
+              Math.max(
+                3,
+                Math.round(
+                  Math.min(1, h.thisWeek.daysDone / h.thisWeek.target) * 30,
+                ),
+              ) + "px";
+            cur.title =
+              h.thisWeek.daysDone +
+              " of " +
+              h.thisWeek.target +
+              " days so far this week";
+            sp.appendChild(cur);
+          }
           right.appendChild(sp);
-          right.appendChild(mk("span", "chip " + st[0], st[1]));
+          var ws = (h.thisWeek && WEEK_STATUS[h.thisWeek.status]) || [
+            "nt",
+            "NO TARGET",
+          ];
+          right.appendChild(mk("span", "chip " + ws[0], ws[1]));
           row.appendChild(left);
           row.appendChild(right);
           el.appendChild(row);
         });
+        if (anyStrength)
+          el.appendChild(
+            mk(
+              "div",
+              "note",
+              "Strength moves toward each week’s result. A missed week lowers it a little; it never resets to zero.",
+            ),
+          );
       }
 
-      function barRow(el, label, value, max, amber) {
+      function barRow(el, label, value, max, amber, sub) {
         var r = mk("div", "rk");
         r.appendChild(mk("span", "", label));
         r.appendChild(mk("span", "mono", String(value)));
@@ -724,6 +1036,10 @@
         b.appendChild(f);
         el.appendChild(r);
         el.appendChild(b);
+        if (sub) {
+          b.style.marginBottom = "4px";
+          el.appendChild(mk("div", "rsub", sub));
+        }
       }
 
       function drawMisses(m) {
@@ -763,12 +1079,29 @@
           return;
         }
         list.forEach(function (d) {
+          var bits = [];
+          if (d.deltaPct != null)
+            bits.push(
+              (d.deltaPct >= 0 ? "▲ " : "▼ ") +
+                Math.abs(d.deltaPct) +
+                "% vs previous",
+            );
+          bits.push(d.share + "% of the total");
+          if (d.daysSince != null)
+            bits.push(
+              d.daysSince === 0
+                ? "logged today"
+                : d.daysSince +
+                    (d.daysSince === 1 ? " day" : " days") +
+                    " since last",
+            );
           barRow(
             el,
             d.label + (d.count > 1 ? " · " + d.count + "×" : ""),
             d.minutes + "m",
             list[0].minutes,
             false,
+            bits.join(" · "),
           );
         });
       }
@@ -777,10 +1110,15 @@
         P = d;
         $("headline").textContent = d.headline;
         drawStats(d.period);
+        drawInsights(d.insights);
         drawChart(d.series);
+        drawWeekday(d.weekday, d.period.activeDays);
         drawHabits(d.habits);
         drawMisses(d.misses);
         drawDisruptors(d.disruptors);
+        $("trunc").textContent = d.truncated
+          ? "Showing your most recent 5,000 logs, so older history may be missing."
+          : "";
         if (!calMounted) {
           calMounted = true;
           Calendar.mount($("cal"), {
@@ -807,8 +1145,13 @@
         [].forEach.call($("range").children, function (b) {
           b.setAttribute("aria-pressed", String(+b.dataset.r === r));
         });
+        if (rangeCache[r]) {
+          render(rangeCache[r]);
+          return Promise.resolve();
+        }
         return json("/api/analytics?range=" + r).then(
           function (d) {
+            rangeCache[r] = d;
             if (id === loadId) render(d);
           },
           function (e) {
@@ -869,6 +1212,9 @@
             },
           );
         else act("Sharing isn’t available in this browser.");
+      };
+      $("pdf").onclick = function () {
+        window.print();
       };
       $("csv").onclick = function () {
         act("Preparing…");

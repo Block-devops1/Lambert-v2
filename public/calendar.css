@@ -318,3 +318,27 @@ button.cal-day:hover {
       monospace;
   }
 }
+
+/* Saving or printing: browsers drop background colours unless told otherwise, which
+   would blank every coloured box. Keep them, and use light shades that read on white. */
+@media print {
+  .cal,
+  .cal * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .cal {
+    --none: #d5dbe8;
+    --off: #eef1f6;
+  }
+  .cal-day.none {
+    color: #2b3548;
+  }
+  .cal-day.off {
+    color: #98a2b6;
+  }
+  .cal-nav,
+  .cal-ovl {
+    display: none;
+  }
+}

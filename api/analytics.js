@@ -32,7 +32,8 @@ module.exports = async function handler(req, res) {
 
     const today = E.dayKey(Date.now(), TZ_OFFSET_MIN);
 
-    // Read only as far back as this view needs.
+    // Month view reads just that month. The dashboard view reads the whole history
+    // (up to the cap) because streaks and habit strength need it; only totals go to the browser.
     let query = db()
       .from("habit_logs")
       .select(COLS)
@@ -48,11 +49,6 @@ module.exports = async function handler(req, res) {
         .toISOString()
         .slice(0, 10);
       query = query.lt("created_at", A.addDays(next, 2) + "T00:00:00Z");
-    } else if (!csv) {
-      query = query.gte(
-        "created_at",
-        A.addDays(today, -(Math.max(2 * range, 56) + 2)) + "T00:00:00Z",
-      );
     }
 
     const [logsR, settingsR, accessR] = await Promise.all([
@@ -99,10 +95,12 @@ module.exports = async function handler(req, res) {
       A.buildAnalytics({
         logs,
         today,
+        nowMs: Date.now(),
         tzOffsetMin: TZ_OFFSET_MIN,
         range,
         joined,
         goal: settings.daily_goal_min || 180,
+        truncated: logs.length >= LIMIT,
         targets: E.sanitizeTargets ? E.sanitizeTargets(settings.targets) : {},
       }),
     );
