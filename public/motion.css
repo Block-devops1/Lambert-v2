@@ -136,6 +136,29 @@
   transform: none;
 }
 
+/* Moving between pages crossfades instead of flashing (Chrome and Edge; others ignore it). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+/* Loading: the logo's ring circles the white L. Transform only; it holds still under reduced motion. */
+.lloader {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+}
+.lloader svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lloader .arc {
+  transform-origin: 32px 32px;
+  animation: m-spin 1s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

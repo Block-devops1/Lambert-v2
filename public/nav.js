@@ -20,7 +20,7 @@
     ".lnav-btn{display:inline-flex;flex-direction:column;justify-content:center;gap:4px;width:38px;height:38px;padding:0 9px;border-radius:10px;border:1px solid #1b2640;background:#0f1729;cursor:pointer}" +
     ".lnav-btn span{display:block;height:2px;background:#e8edf7;border-radius:2px}" +
     ".lnav-btn:focus-visible,.lnav-panel a:focus-visible,.lnav-out:focus-visible{outline:2px solid #f59e0b;outline-offset:2px}" +
-    ".lnav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:90}" +
+    ".lnav-overlay{position:fixed;inset:0;background:rgba(7,11,22,.5);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:90}" +
     ".lnav-overlay.open{opacity:1;pointer-events:auto}" +
     ".lnav-panel{position:fixed;top:0;left:0;bottom:0;width:min(290px,84vw);background:#0f1729;border-right:1px solid #1b2640;transform:translateX(-100%);transition:transform .22s ease;z-index:100;padding:22px 14px;display:flex;flex-direction:column;gap:4px;font-family:Inter,system-ui,sans-serif}" +
     ".lnav-panel.open{transform:none}" +

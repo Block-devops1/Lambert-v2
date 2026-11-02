@@ -229,7 +229,39 @@
     </style>
   </head>
   <body>
-    <div class="gate" id="gate">Checking access…</div>
+    <div class="gate" id="gate">
+      <div class="lloader" role="status" aria-label="Checking access">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <circle
+            cx="32"
+            cy="32"
+            r="20"
+            fill="none"
+            stroke="#1b2640"
+            stroke-width="5"
+          />
+          <circle
+            class="arc"
+            cx="32"
+            cy="32"
+            r="20"
+            fill="none"
+            stroke="#f59e0b"
+            stroke-width="5"
+            stroke-linecap="round"
+            stroke-dasharray="40 86"
+          />
+          <path
+            d="M26 23v16h12"
+            fill="none"
+            stroke="#fff"
+            stroke-width="5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
 
     <div class="wrap" id="app" hidden>
       <header>
